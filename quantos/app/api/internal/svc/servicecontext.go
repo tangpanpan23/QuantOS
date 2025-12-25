@@ -39,7 +39,16 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		StrategyWorkshopRpc: zrpc.MustNewClient(c.StrategyWorkshop),
 		AiAssistantRpc:       zrpc.MustNewClient(c.AiAssistant),
 		SmartExecutionRpc:    zrpc.MustNewClient(c.SmartExecution),
-		// 初始化通用组件
-		Common: common.NewCommon(c.DB.Host, c.DB.Port, c.DB.User, c.DB.Password, c.DB.Database),
+		// 初始化通用组件 - 使用安全的数据库连接池配置
+		Common: common.NewCommon(
+			c.DB.Host,
+			c.DB.Port,
+			c.DB.User,
+			c.DB.Password,
+			c.DB.Database,
+			c.DB.MaxIdleConns,
+			c.DB.MaxOpenConns,
+			c.DB.ConnMaxLifetime,
+		),
 	}
 }

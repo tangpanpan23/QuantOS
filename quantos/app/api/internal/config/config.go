@@ -15,14 +15,17 @@ type Config struct {
 		AccessExpire int64
 	}
 
-	// 数据库配置
+	// 数据库配置 - 增强安全性
 	DB struct {
-		Host     string
-		Port     int
-		User     string
-		Password string
-		Database string
-		Charset  string
+		Host            string
+		Port            int
+		User            string
+		Password        string
+		Database        string
+		Charset         string
+		MaxIdleConns    int `yaml:"MaxIdleConns"`
+		MaxOpenConns    int `yaml:"MaxOpenConns"`
+		ConnMaxLifetime int `yaml:"ConnMaxLifetime"`
 	}
 
 	// Redis 配置
@@ -37,6 +40,12 @@ type Config struct {
 	// 其他配置
 	Log       LogConf
 	Telemetry TelemetryConf
+
+	// 安全配置
+	Security SecurityConf
+
+	// 功能开关
+	Features FeatureConf
 }
 
 type LogConf struct {
@@ -49,4 +58,18 @@ type TelemetryConf struct {
 	Name     string
 	Endpoint string
 	Sampler  float64
+}
+
+type SecurityConf struct {
+	CorsAllowedOrigins string `yaml:"CorsAllowedOrigins"`
+	RateLimitPerMinute int    `yaml:"RateLimitPerMinute"`
+}
+
+type FeatureConf struct {
+	EnableSwagger bool `yaml:"EnableSwagger"`
+	EnableMetrics bool `yaml:"EnableMetrics"`
+	EnableTracing bool `yaml:"EnableTracing"`
+	EnableCache   bool `yaml:"EnableCache"`
+	DebugMode     bool `yaml:"DebugMode"`
+	AutoMigrate   bool `yaml:"AutoMigrate"`
 }

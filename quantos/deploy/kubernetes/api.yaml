@@ -5,32 +5,42 @@ metadata:
   namespace: quantos
 data:
   api.yaml: |
-    Name: api
+    # ===========================================
+    # QuantSaaS API 安全配置
+    # ===========================================
+    # 此配置使用环境变量和Kubernetes Secrets保护敏感信息
+    # 敏感信息通过Kubernetes Secrets注入，而不是硬编码
+
+    Name: quantos-api
     Host: 0.0.0.0
     Port: 8888
-    Mode: prod
+    Mode: prod  # 生产环境模式
 
-    # JWT 配置
+    # JWT 配置 - 从Kubernetes Secret获取
     JwtAuth:
-      AccessSecret: quantos-secret-key
+      AccessSecret: ${JWT_ACCESS_SECRET}
       AccessExpire: 86400
 
-    # 数据库配置
+    # 数据库配置 - 使用Kubernetes Secret保护敏感信息
     DB:
       Host: mysql-service.quantos.svc.cluster.local
       Port: 3306
       User: quantos
-      Password: quantos123
+      Password: ${DB_PASSWORD}  # 从Secret注入
       Database: quantos
       Charset: utf8mb4
+      MaxIdleConns: 10
+      MaxOpenConns: 100
+      ConnMaxLifetime: 300
 
-    # Redis 配置
+    # Redis 配置 - 支持密码保护
     Redis:
       Host: redis-service.quantos.svc.cluster.local:6379
       Type: node
       Key: quantos
+      Pass: ${REDIS_PASSWORD}  # 从Secret注入
 
-    # RPC服务配置
+    # RPC服务配置 - 内部服务通信
     NewsPolicyEngine:
       Endpoints:
         - news-policy-engine-service.quantos.svc.cluster.local:8081
@@ -47,17 +57,31 @@ data:
       Endpoints:
         - smart-execution-service.quantos.svc.cluster.local:8084
 
-    # 日志配置
+    # 日志配置 - 结构化日志便于监控
     Log:
-      ServiceName: api
+      ServiceName: quantos-api
       Level: info
-      Mode: console
+      Mode: json  # JSON格式便于日志聚合
 
-    # 链路追踪配置
+    # 链路追踪配置 - Jaeger用于分布式追踪
     Telemetry:
-      Name: api
+      Name: quantos-api
       Endpoint: http://jaeger-collector.quantos.svc.cluster.local:14268/api/traces
-      Sampler: 0.1
+      Sampler: 0.1  # 生产环境采样率
+
+    # 安全配置
+    Security:
+      CorsAllowedOrigins: "https://quantos.com,https://app.quantos.com"
+      RateLimitPerMinute: 1000  # 生产环境更高的限流
+
+    # 功能开关 - 生产环境配置
+    Features:
+      EnableSwagger: false  # 生产环境关闭Swagger
+      EnableMetrics: true
+      EnableTracing: true
+      EnableCache: true
+      DebugMode: false  # 生产环境关闭调试模式
+      AutoMigrate: false  # 生产环境手动迁移
 
 ---
 apiVersion: apps/v1
@@ -77,14 +101,52 @@ spec:
       labels:
         app: api
     spec:
+      # 安全上下文
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001  # 非root用户
+        runAsGroup: 1001
+        fsGroup: 1001
+        # 防止容器以特权模式运行
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
       containers:
       - name: api
         image: quantos/api:latest
         ports:
         - containerPort: 8888
+          name: http
+          protocol: TCP
+        # 环境变量注入 - 从Secrets获取敏感信息
+        env:
+        - name: JWT_ACCESS_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: jwt-access-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-user-password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: redis-password
         volumeMounts:
         - name: config
           mountPath: /app/etc
+          readOnly: true
+        # 安全配置：只读根文件系统
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         resources:
           requests:
             memory: "128Mi"
@@ -92,18 +154,24 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
+        # 健康检查
         livenessProbe:
           httpGet:
             path: /health
             port: 8888
+            scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /health
             port: 8888
+            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
       volumes:
       - name: config
         configMap:
@@ -152,3 +220,36 @@ spec:
             name: api-service
             port:
               number: 8888
+
+---
+# API Secrets - 存储API相关的敏感信息
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-secrets
+  namespace: quantos
+  labels:
+    app: api
+    component: secrets
+  annotations:
+    security.alpha.kubernetes.io/secret-type: "application"
+type: Opaque
+data:
+  # JWT密钥 - 应该使用强加密密钥
+  jwt-access-secret: ""  # 应从外部密钥管理工具生成
+
+---
+# Redis Secret - 存储Redis密码
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secret
+  namespace: quantos
+  labels:
+    app: redis
+    component: secrets
+  annotations:
+    security.alpha.kubernetes.io/secret-type: "database"
+type: Opaque
+data:
+  redis-password: ""  # Redis密码，应从外部配置

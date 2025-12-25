@@ -97,5 +97,25 @@ run-api: ## 直接运行API服务 (开发模式)
 swagger: ## 生成Swagger文档
 	goctl api plugin -plugin goctl-swagger="swagger -filename api.json -host 127.0.0.1:8888" -api app/api/desc/api.api -dir .
 
+# 安全相关命令
+secrets-setup: ## 设置Kubernetes Secrets
+	./scripts/setup-secrets.sh quantos
+
+secrets-verify: ## 验证Kubernetes Secrets
+	./scripts/setup-secrets.sh -v quantos
+
+secrets-clean: ## 清理Kubernetes Secrets（危险操作）
+	./scripts/setup-secrets.sh -d quantos
+
+security-check: ## 安全检查
+	@echo "检查安全配置..."
+	@test -f .env && echo "✓ 环境变量文件存在" || (echo "✗ 缺少 .env 文件"; exit 1)
+	@grep -q "JWT_ACCESS_SECRET=your_" .env && echo "⚠️  JWT密钥未配置" || echo "✓ JWT密钥已配置"
+	@grep -q "DB_PASSWORD=your_" .env && echo "⚠️  数据库密码未配置" || echo "✓ 数据库密码已配置"
+	@echo "安全检查完成"
+
+# 生产环境部署
+deploy-secure: secrets-setup deploy-k8s ## 安全部署到生产环境
+
 # CI/CD 相关
-ci: lint test build ## CI流水线命令
+ci: security-check lint test build ## CI流水线命令（包含安全检查）

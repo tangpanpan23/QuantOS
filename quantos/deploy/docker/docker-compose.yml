@@ -1,63 +1,99 @@
 version: '3.8'
 
+# 加载环境变量文件
+# 复制 env.example 为 .env 并配置你的实际值
+# cp env.example .env
+
 services:
-  # MySQL数据库
+  # MySQL数据库 - 安全的配置
   mysql:
     image: mysql:8.0
     container_name: quantos-mysql
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: quantos123
-      MYSQL_DATABASE: quantos
-      MYSQL_USER: quantos
-      MYSQL_PASSWORD: quantos123
+      # 使用环境变量而不是硬编码密码
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-change_this_secure_password}
+      MYSQL_DATABASE: ${DB_DATABASE:-quantos}
+      MYSQL_USER: ${DB_USER:-quantos}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secure_password_required}
+      # 额外的安全配置
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # MySQL配置文件 - 增强安全性
+      - ./mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --explicit_defaults_for_timestamp=true
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO
     networks:
       - quantos-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Redis缓存
+  # Redis缓存 - 安全的配置
   redis:
     image: redis:7-alpine
     container_name: quantos-redis
-    restart: always
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+      # Redis配置文件 - 增强安全性
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     networks:
       - quantos-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # QuantSaaS API服务
+  # QuantSaaS API服务 - 使用环境变量
   api:
     build:
       context: ../../
       dockerfile: deploy/docker/api.Dockerfile
     container_name: quantos-api
-    restart: always
+    restart: unless-stopped
     ports:
-      - "8888:8888"
+      - "${APP_PORT:-8888}:8888"
+    env_file:
+      - .env
     environment:
+      # 覆盖容器内的环境变量
+      - APP_ENV=production
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_USER=quantos
-      - DB_PASSWORD=quantos123
-      - DB_DATABASE=quantos
-      - REDIS_HOST=redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - quantos-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
   # 新闻政策感知引擎 (预留)
   # news-policy-engine:
