@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: quantos-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: quantos123
+      MYSQL_DATABASE: quantos
+      MYSQL_USER: quantos
+      MYSQL_PASSWORD: quantos123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - quantos-network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: quantos-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - quantos-network
+
+  # QuantSaaS API服务
+  api:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/api.Dockerfile
+    container_name: quantos-api
+    restart: always
+    ports:
+      - "8888:8888"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=quantos
+      - DB_PASSWORD=quantos123
+      - DB_DATABASE=quantos
+      - REDIS_HOST=redis:6379
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - quantos-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 新闻政策感知引擎 (预留)
+  # news-policy-engine:
+  #   build:
+  #     context: ../../
+  #     dockerfile: deploy/docker/rpc.Dockerfile
+  #   container_name: quantos-news-policy
+  #   restart: always
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     - DB_HOST=mysql
+  #     - DB_PORT=3306
+  #     - DB_USER=quantos
+  #     - DB_PASSWORD=quantos123
+  #     - DB_DATABASE=quantos
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - quantos-network
+
+  # 策略工坊 (预留)
+  # strategy-workshop:
+  #   build:
+  #     context: ../../
+  #     dockerfile: deploy/docker/rpc.Dockerfile
+  #   container_name: quantos-strategy-workshop
+  #   restart: always
+  #   ports:
+  #     - "8082:8082"
+  #   environment:
+  #     - DB_HOST=mysql
+  #     - DB_PORT=3306
+  #     - DB_USER=quantos
+  #     - DB_PASSWORD=quantos123
+  #     - DB_DATABASE=quantos
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - quantos-network
+
+  # AI助手 (预留)
+  # ai-assistant:
+  #   build:
+  #     context: ../../
+  #     dockerfile: deploy/docker/rpc.Dockerfile
+  #   container_name: quantos-ai-assistant
+  #   restart: always
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     - DB_HOST=mysql
+  #     - DB_PORT=3306
+  #     - DB_USER=quantos
+  #     - DB_PASSWORD=quantos123
+  #     - DB_DATABASE=quantos
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - quantos-network
+
+  # 智能执行服务 (预留)
+  # smart-execution:
+  #   build:
+  #     context: ../../
+  #     dockerfile: deploy/docker/rpc.Dockerfile
+  #   container_name: quantos-smart-execution
+  #   restart: always
+  #   ports:
+  #     - "8084:8084"
+  #   environment:
+  #     - DB_HOST=mysql
+  #     - DB_PORT=3306
+  #     - DB_USER=quantos
+  #     - DB_PASSWORD=quantos123
+  #     - DB_DATABASE=quantos
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - quantos-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  quantos-network:
+    driver: bridge

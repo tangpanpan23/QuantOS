@@ -1,0 +1,3 @@
+[submodule ".cursor/rules"]
+	path = .cursor/rules
+	url = git@github.com:tangpanpan23/hps-go-zero-rules.git

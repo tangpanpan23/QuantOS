@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: quantos
+data:
+  api.yaml: |
+    Name: api
+    Host: 0.0.0.0
+    Port: 8888
+    Mode: prod
+
+    # JWT 配置
+    JwtAuth:
+      AccessSecret: quantos-secret-key
+      AccessExpire: 86400
+
+    # 数据库配置
+    DB:
+      Host: mysql-service.quantos.svc.cluster.local
+      Port: 3306
+      User: quantos
+      Password: quantos123
+      Database: quantos
+      Charset: utf8mb4
+
+    # Redis 配置
+    Redis:
+      Host: redis-service.quantos.svc.cluster.local:6379
+      Type: node
+      Key: quantos
+
+    # RPC服务配置
+    NewsPolicyEngine:
+      Endpoints:
+        - news-policy-engine-service.quantos.svc.cluster.local:8081
+
+    StrategyWorkshop:
+      Endpoints:
+        - strategy-workshop-service.quantos.svc.cluster.local:8082
+
+    AiAssistant:
+      Endpoints:
+        - ai-assistant-service.quantos.svc.cluster.local:8083
+
+    SmartExecution:
+      Endpoints:
+        - smart-execution-service.quantos.svc.cluster.local:8084
+
+    # 日志配置
+    Log:
+      ServiceName: api
+      Level: info
+      Mode: console
+
+    # 链路追踪配置
+    Telemetry:
+      Name: api
+      Endpoint: http://jaeger-collector.quantos.svc.cluster.local:14268/api/traces
+      Sampler: 0.1
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: quantos
+  labels:
+    app: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: quantos/api:latest
+        ports:
+        - containerPort: 8888
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: api-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: quantos
+  labels:
+    app: api
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 8888
+    targetPort: 8888
+    name: http
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: quantos
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.quantos.com
+    secretName: api-tls
+  rules:
+  - host: api.quantos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 8888

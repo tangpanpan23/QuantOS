@@ -1,0 +1,53 @@
+Name: api
+Host: 0.0.0.0
+Port: 8888
+Mode: dev
+
+# JWT 配置
+JwtAuth:
+  AccessSecret: quantos-secret-key
+  AccessExpire: 86400
+
+# 数据库配置
+DB:
+  Host: localhost
+  Port: 3306
+  User: root
+  Password: password
+  Database: quantos
+  Charset: utf8mb4
+
+# Redis 配置
+Redis:
+  Host: localhost:6379
+  Type: node
+  Key: quantos
+
+# RPC服务配置
+NewsPolicyEngine:
+  Endpoints:
+    - localhost:8081
+
+StrategyWorkshop:
+  Endpoints:
+    - localhost:8082
+
+AiAssistant:
+  Endpoints:
+    - localhost:8083
+
+SmartExecution:
+  Endpoints:
+    - localhost:8084
+
+# 日志配置
+Log:
+  ServiceName: api
+  Level: info
+  Mode: console
+
+# 链路追踪配置
+Telemetry:
+  Name: api
+  Endpoint: http://localhost:14268/api/traces
+  Sampler: 1.0
