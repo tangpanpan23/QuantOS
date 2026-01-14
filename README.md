@@ -94,7 +94,7 @@ graph TB
 ### 一键启动（推荐）
 ```bash
 # 克隆项目
-git clone https://github.com/your-org/quantos.git
+git clone https://github.com/tal-tech/quantos.git
 cd quantos
 
 # 启动开发环境
@@ -131,7 +131,7 @@ curl -X POST http://localhost:8888/api/v1/user/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "quant_trader",
-    "email": "trader@quantos.com",
+    "email": "trader@tal.com",
     "password": "secure_password"
   }'
 ```
@@ -190,11 +190,17 @@ curl -X POST http://localhost:8888/api/v1/strategies \
 
 ## 📞 联系我们
 
-- **官方网站**: https://quantos.com
-- **技术文档**: https://docs.quantos.com
-- **GitHub**: https://github.com/your-org/quantos
-- **邮箱**: contact@quantos.com
-- **微信公众号**: QuantSaaS
+- **官方网站**: https://quantos.tal.com
+- **技术文档**: https://docs.tal.com/quantos
+- **GitHub**: https://github.com/tal-tech/quantos
+- **邮箱**: quantos@tal.com
+- **内部论坛**: https://forum.tal.com/c/quantos
+
+### 团队成员
+
+- **项目负责人**: 张凌宇 (zhanglingyu@tal.com)
+- **技术负责人**: 量化策略团队
+- **商务合作**: business@tal.com
 
 ---
 
@@ -204,7 +210,7 @@ curl -X POST http://localhost:8888/api/v1/strategies \
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/your-org/quantos?style=social" alt="GitHub stars">
-  <img src="https://img.shields.io/github/forks/your-org/quantos?style=social" alt="GitHub forks">
-  <img src="https://img.shields.io/github/contributors/your-org/quantos" alt="Contributors">
+  <img src="https://img.shields.io/github/stars/tal-tech/quantos?style=social" alt="GitHub stars">
+  <img src="https://img.shields.io/github/forks/tal-tech/quantos?style=social" alt="GitHub forks">
+  <img src="https://img.shields.io/github/contributors/tal-tech/quantos" alt="Contributors">
 </p>

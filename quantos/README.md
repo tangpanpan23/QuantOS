@@ -69,7 +69,7 @@ curl http://localhost:8888/health
 ```bash
 curl -X POST http://localhost:8888/api/v1/user/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"demo","email":"demo@quantos.com","password":"demo123"}'
+  -d '{"username":"demo","email":"demo@tal.com","password":"demo123"}'
 ```
 
 ### 获取Token
@@ -128,9 +128,10 @@ quantos/
 
 ## 📞 联系我们
 
-- **项目主页**: https://github.com/your-org/quantos
-- **技术文档**: https://docs.quantos.com
-- **邮箱**: contact@quantos.com
+- **项目主页**: https://github.com/tal-tech/quantos
+- **技术文档**: https://docs.tal.com/quantos
+- **邮箱**: quantos@tal.com
+- **内部论坛**: https://forum.tal.com/c/quantos
 
 ---
 
