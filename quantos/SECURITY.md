@@ -133,7 +133,7 @@ JwtAuth:
 ```go
 // CORS配置
 Security:
-  CorsAllowedOrigins: "https://quantos.tal.com,https://app.tal.com"
+  CorsAllowedOrigins: "http://localhost:3000,http://localhost:8080"
   RateLimitPerMinute: 1000
 
 // 功能开关
@@ -324,7 +324,7 @@ kubectl exec -it <pod-name> -- env | grep -E "(JWT|DB_)"
 
 如果发现安全漏洞，请通过以下方式报告：
 
-- 📧 邮箱: security@tal.com
+- 📧 邮箱: tangpan23@126.com
 - 🐛 GitHub Issues: [安全问题模板](.github/ISSUE_TEMPLATE/security.md)
 
 我们承诺在收到报告后24小时内响应，并在90天内发布修复方案。

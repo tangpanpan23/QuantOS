@@ -1,0 +1,146 @@
+// Stock Data Service Protocol Buffers
+syntax = "proto3";
+
+package stock;
+option go_package = "./stock";
+
+import "google/protobuf/timestamp.proto";
+
+// 股票基础信息
+message StockInfo {
+  string symbol = 1;           // 股票代码
+  string name = 2;             // 股票名称
+  string market = 3;           // 市场代码
+  string industry = 4;         // 行业分类
+  string sector = 5;           // 板块分类
+  double total_shares = 6;     // 总股本
+  double float_shares = 7;     // 流通股本
+  string list_date = 8;        // 上市日期
+  int32 status = 9;            // 状态：1-正常，2-ST，3-停牌
+}
+
+// 实时行情数据
+message RealTimeQuote {
+  string symbol = 1;
+  double price = 2;            // 最新价
+  double change = 3;           // 涨跌额
+  double change_percent = 4;   // 涨跌幅
+  int64 volume = 5;            // 成交量
+  double amount = 6;           // 成交额
+  double open = 7;             // 开盘价
+  double high = 8;             // 最高价
+  double low = 9;              // 最低价
+  double pre_close = 10;       // 昨收价
+  double turnover_rate = 11;   // 换手率
+  google.protobuf.Timestamp update_time = 12;
+}
+
+// K线数据
+message KLineData {
+  string symbol = 1;
+  string date = 2;
+  string time = 3;
+  double open = 4;
+  double high = 5;
+  double low = 6;
+  double close = 7;
+  int64 volume = 8;
+  double amount = 9;
+  string period = 10;          // 周期：1m,5m,15m,30m,1h,1d,1w,1M
+}
+
+// Level2数据
+message Level2Data {
+  string symbol = 1;
+  repeated PriceLevel buy_orders = 2;  // 买单队列
+  repeated PriceLevel sell_orders = 3; // 卖单队列
+  repeated TradeDetail trades = 4;     // 成交明细
+  google.protobuf.Timestamp update_time = 5;
+}
+
+message PriceLevel {
+  double price = 1;
+  int64 volume = 2;
+  int32 orders = 3;            // 订单数量
+}
+
+message TradeDetail {
+  string trade_id = 1;
+  double price = 2;
+  int64 volume = 3;
+  string trade_time = 4;
+  int32 trade_type = 5;        // 1-买，2-卖
+}
+
+// 大盘指数
+message IndexData {
+  string index_code = 1;
+  string index_name = 2;
+  double value = 3;
+  double change = 4;
+  double change_percent = 5;
+  int64 volume = 6;
+  double amount = 7;
+  google.protobuf.Timestamp update_time = 8;
+}
+
+// 请求/响应消息
+message GetStockListReq {
+  string market = 1;           // 市场筛选，可选
+  string industry = 2;         // 行业筛选，可选
+  int32 page = 3;              // 页码，默认1
+  int32 page_size = 4;         // 每页大小，默认20
+}
+
+message GetStockListResp {
+  repeated StockInfo stocks = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetRealTimeQuoteReq {
+  repeated string symbols = 1;
+}
+
+message GetRealTimeQuoteResp {
+  repeated RealTimeQuote quotes = 1;
+}
+
+message GetKLineDataReq {
+  string symbol = 1;
+  string period = 2;           // 1m,5m,15m,30m,1h,1d,1w,1M
+  string start_date = 3;
+  string end_date = 4;
+  int32 limit = 5;             // 限制条数，默认100
+}
+
+message GetKLineDataResp {
+  repeated KLineData k_lines = 1;
+}
+
+message GetLevel2DataReq {
+  string symbol = 1;
+}
+
+message GetLevel2DataResp {
+  Level2Data level2_data = 1;
+}
+
+message GetIndexDataReq {
+  repeated string index_codes = 1; // 为空时返回所有主要指数
+}
+
+message GetIndexDataResp {
+  repeated IndexData indices = 1;
+}
+
+// StockDataService 服务定义
+service StockDataService {
+  // 基础数据接口
+  rpc GetStockList(GetStockListReq) returns (GetStockListResp);
+  rpc GetRealTimeQuote(GetRealTimeQuoteReq) returns (GetRealTimeQuoteResp);
+  rpc GetKLineData(GetKLineDataReq) returns (GetKLineDataResp);
+  rpc GetLevel2Data(GetLevel2DataReq) returns (GetLevel2DataResp);
+  rpc GetIndexData(GetIndexDataReq) returns (GetIndexDataResp);
+}

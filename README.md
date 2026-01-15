@@ -28,9 +28,10 @@ AI负责数据分析和策略建议，人负责最终决策和风险控制
 | 模块 | 功能特色 | 技术亮点 |
 |------|----------|----------|
 | 📰 新闻政策感知 | 多源数据接入、情感分析、事件提取 | NLP + 图谱算法 |
-| 🏭 策略工坊 | AI生成策略、模板超市、代码IDE | 三层架构设计 |
-| 🤖 AI决策中心 | 策略优化、行业轮动、归因分析 | 机器学习驱动 |
-| ⚡ 智能执行 | 合规检查、个性化风控、自动执行 | 实时监控系统 |
+| 🏭 策略工坊 | AI生成策略、模板超市、代码IDE、大模型策略、策略回测 | 三层架构 + AI增强 |
+| 🤖 AI决策中心 | 策略优化、行业轮动、归因分析、AI智能选股、情绪周期 | 机器学习驱动 |
+| ⚡ 智能执行 | 合规检查、个性化风控、自动执行、下单买卖 | 实时监控系统 |
+| 📊 StockApi数据服务 | Level2数据、实时行情、技术指标、资金流向、竞价分析 | 专业数据服务集成 |
 
 ## 🏗️ 技术架构
 
@@ -52,6 +53,10 @@ graph TB
     C1[API服务] --> C
     C2[感知引擎] --> C
     C3[策略工坊] --> C
+    C4[股票数据服务] --> C
+    C5[市场分析服务] --> C
+    C6[交易服务] --> C
+    C7[专项分析服务] --> C
     C4[AI决策中心] --> C
     C5[执行服务] --> C
 
@@ -94,7 +99,7 @@ graph TB
 ### 一键启动（推荐）
 ```bash
 # 克隆项目
-git clone https://github.com/tal-tech/quantos.git
+git clone https://github.com/tangpanpan23/quantos.git
 cd quantos
 
 # 启动开发环境
@@ -131,7 +136,7 @@ curl -X POST http://localhost:8888/api/v1/user/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "quant_trader",
-    "email": "trader@tal.com",
+    "email": "trader@126.com",
     "password": "secure_password"
   }'
 ```
@@ -156,16 +161,19 @@ curl -X POST http://localhost:8888/api/v1/strategies \
 - [x] 数据模型设计和数据库迁移
 - [x] Docker/K8s部署配置
 - [x] API服务和基础业务逻辑
+- [x] StockApi数据服务架构集成 (Proto定义 + API路由)
 
 ### 进行中 🟡
 - [ ] 新闻政策感知引擎 (NLP情感分析)
-- [ ] 策略工坊 (AI策略生成)
+- [ ] 策略工坊 (AI策略生成 + StockApi策略功能)
 - [ ] 实时数据处理管道
+- [ ] StockApi服务实现 (股票数据、市场分析、交易、专项分析)
 
 ### 规划中 🟠
-- [ ] AI决策中心 (机器学习优化)
-- [ ] 智能风控系统 (实时监控)
+- [ ] AI决策中心 (机器学习优化 + StockApi AI选股)
+- [ ] 智能风控系统 (实时监控 + StockApi风控)
 - [ ] 移动端应用开发
+- [ ] StockApi前端界面集成
 
 ## 🤝 贡献指南
 
@@ -190,17 +198,13 @@ curl -X POST http://localhost:8888/api/v1/strategies \
 
 ## 📞 联系我们
 
-- **官方网站**: https://quantos.tal.com
-- **技术文档**: https://docs.tal.com/quantos
-- **GitHub**: https://github.com/tal-tech/quantos
-- **邮箱**: quantos@tal.com
-- **内部论坛**: https://forum.tal.com/c/quantos
+- **GitHub**: https://github.com/tangpanpan23
+- **邮箱**: tangpan23@126.com
 
 ### 团队成员
 
-- **项目负责人**: 张凌宇 (zhanglingyu@tal.com)
+- **项目负责人**: 张凌宇 (tangpan23@126.com)
 - **技术负责人**: 量化策略团队
-- **商务合作**: business@tal.com
 
 ---
 
@@ -210,7 +214,7 @@ curl -X POST http://localhost:8888/api/v1/strategies \
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/tal-tech/quantos?style=social" alt="GitHub stars">
-  <img src="https://img.shields.io/github/forks/tal-tech/quantos?style=social" alt="GitHub forks">
-  <img src="https://img.shields.io/github/contributors/tal-tech/quantos" alt="Contributors">
+  <img src="https://img.shields.io/github/stars/tangpanpan23?style=social" alt="GitHub stars">
+  <img src="https://img.shields.io/github/forks/tangpanpan23?style=social" alt="GitHub forks">
+  <img src="https://img.shields.io/github/contributors/tangpanpan23" alt="Contributors">
 </p>

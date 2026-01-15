@@ -181,3 +181,130 @@ type IndexData struct {
 func (IndexData) TableName() string {
 	return "q_index_data"
 }
+
+// StockBasic 股票基础信息模型
+type StockBasic struct {
+	model.BaseModel
+
+	Symbol       string `gorm:"column:symbol;type:varchar(20);not null;uniqueIndex:uk_symbol;comment:股票代码"`
+	Name         string `gorm:"column:name;type:varchar(100);not null;comment:股票名称"`
+	FullName     string `gorm:"column:full_name;type:varchar(200);comment:股票全称"`
+
+	// 基本信息
+	Market       string `gorm:"column:market;type:varchar(10);not null;comment:市场代码"`
+	Exchange     string `gorm:"column:exchange;type:varchar(20);comment:交易所"`
+	Board        string `gorm:"column:board;type:varchar(50);comment:板块"`
+	Industry     string `gorm:"column:industry;type:varchar(100);comment:行业"`
+	Sector       string `gorm:"column:sector;type:varchar(100);comment:板块"`
+
+	// 财务信息
+	ListDate     string  `gorm:"column:list_date;type:date;comment:上市日期"`
+	TotalShare   float64 `gorm:"column:total_share;type:decimal(20,4);comment:总股本"`
+	FloatShare   float64 `gorm:"column:float_share;type:decimal(20,4);comment:流通股本"`
+
+	// 状态信息
+	Status       int8    `gorm:"column:status;type:tinyint(4);not null;default:1;comment:状态: 1-正常, 2-ST, 3-停牌"`
+	IsSt         int8    `gorm:"column:is_st;type:tinyint(4);default:0;comment:是否ST股"`
+	IsSuspended  int8    `gorm:"column:is_suspended;type:tinyint(4);default:0;comment:是否停牌"`
+
+	// 更新信息
+	UpdateDate   string  `gorm:"column:update_date;type:date;comment:更新日期"`
+}
+
+// TableName 指定表名
+func (StockBasic) TableName() string {
+	return "q_stock_basic"
+}
+
+// FundBasic 基金基础信息模型
+type FundBasic struct {
+	model.BaseModel
+
+	FundCode     string  `gorm:"column:fund_code;type:varchar(20);not null;uniqueIndex:uk_fund_code;comment:基金代码"`
+	Name         string  `gorm:"column:name;type:varchar(100);not null;comment:基金名称"`
+	ShortName    string  `gorm:"column:short_name;type:varchar(50);comment:基金简称"`
+
+	// 基本信息
+	Type         string  `gorm:"column:type;type:varchar(20);comment:基金类型"`
+	Management   string  `gorm:"column:management;type:varchar(100);comment:基金管理人"`
+	Custodian    string  `gorm:"column:custodian;type:varchar(100);comment:基金托管人"`
+
+	// 规模信息
+	TotalAsset   float64 `gorm:"column:total_asset;type:decimal(20,4);comment:基金规模"`
+	ShareSize    float64 `gorm:"column:share_size;type:decimal(20,4);comment:份额规模"`
+
+	// 时间信息
+	EstablishDate string `gorm:"column:establish_date;type:date;comment:成立日期"`
+	UpdateDate    string `gorm:"column:update_date;type:date;comment:更新日期"`
+
+	// 状态
+	Status       int8    `gorm:"column:status;type:tinyint(4);default:1;comment:状态: 1-正常, 2-停止"`
+}
+
+// TableName 指定表名
+func (FundBasic) TableName() string {
+	return "q_fund_basic"
+}
+
+// LimitUpPool 涨停股池模型
+type LimitUpPool struct {
+	model.BaseModel
+
+	Symbol       string  `gorm:"column:symbol;type:varchar(20);not null;index:idx_symbol_date;comment:股票代码"`
+	Name         string  `gorm:"column:name;type:varchar(100);comment:股票名称"`
+
+	// 涨停信息
+	TradeDate    string  `gorm:"column:trade_date;type:date;not null;index:idx_symbol_date;comment:交易日期"`
+	LimitUpPrice float64 `gorm:"column:limit_up_price;type:decimal(10,4);comment:涨停价"`
+	ClosePrice   float64 `gorm:"column:close_price;type:decimal(10,4);comment:收盘价"`
+
+	// 封单信息
+	LimitUpAmount float64 `gorm:"column:limit_up_amount;type:decimal(20,2);comment:封单金额"`
+	LimitUpVolume int64   `gorm:"column:limit_up_volume;type:bigint;comment:封单量"`
+
+	// 统计信息
+	FirstLimitUpTime string `gorm:"column:first_limit_up_time;type:datetime;comment:首次涨停时间"`
+	OpenTimes     int8    `gorm:"column:open_times;type:tinyint(4);default:0;comment:打开次数"`
+	OpenAmount    float64 `gorm:"column:open_amount;type:decimal(20,2);comment:打开金额"`
+
+	// 原因分类
+	Reason       string  `gorm:"column:reason;type:varchar(200);comment:涨停原因"`
+	Category     string  `gorm:"column:category;type:varchar(50);comment:涨停类型"`
+
+	UpdateTime   string  `gorm:"column:update_time;type:datetime;comment:更新时间"`
+}
+
+// TableName 指定表名
+func (LimitUpPool) TableName() string {
+	return "q_limit_up_pool"
+}
+
+// DragonTigerList 龙虎榜模型
+type DragonTigerList struct {
+	model.BaseModel
+
+	Symbol       string  `gorm:"column:symbol;type:varchar(20);not null;index:idx_symbol_date;comment:股票代码"`
+	Name         string  `gorm:"column:name;type:varchar(100);comment:股票名称"`
+	TradeDate    string  `gorm:"column:trade_date;type:date;not null;index:idx_symbol_date;comment:交易日期"`
+
+	// 龙虎榜信息
+	RankType     string  `gorm:"column:rank_type;type:varchar(20);comment:榜单类型"`
+	RankPosition int8    `gorm:"column:rank_position;type:tinyint(4);comment:排名"`
+
+	// 买入信息
+	BuyAmount    float64 `gorm:"column:buy_amount;type:decimal(20,2);comment:买入金额"`
+	BuyVolume    int64   `gorm:"column:buy_volume;type:bigint;comment:买入量"`
+	SellAmount   float64 `gorm:"column:sell_amount;type:decimal(20,2);comment:卖出金额"`
+	SellVolume   int64   `gorm:"column:sell_volume;type:bigint;comment:卖出量"`
+
+	// 营业部信息
+	BrokerName   string  `gorm:"column:broker_name;type:varchar(200);comment:营业部名称"`
+	BrokerCode   string  `gorm:"column:broker_code;type:varchar(20);comment:营业部代码"`
+
+	UpdateTime   string  `gorm:"column:update_time;type:datetime;comment:更新时间"`
+}
+
+// TableName 指定表名
+func (DragonTigerList) TableName() string {
+	return "q_dragon_tiger_list"
+}

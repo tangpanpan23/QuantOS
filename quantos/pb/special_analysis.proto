@@ -1,0 +1,277 @@
+// Special Analysis Service Protocol Buffers
+syntax = "proto3";
+
+package specialanalysis;
+option go_package = "./specialanalysis";
+
+import "google/protobuf/timestamp.proto";
+
+// 竞价专题数据
+message AuctionData {
+  string symbol = 1;
+  string name = 2;
+  double open_price = 3;       // 开盘价
+  double pre_close_price = 4;  // 昨收价
+  double price_change = 5;     // 涨跌额
+  double price_change_pct = 6; // 涨跌幅
+  int64 total_volume = 7;      // 总成交量
+  double total_amount = 8;     // 总成交额
+  repeated AuctionDetail details = 9; // 竞价明细
+  string auction_result = 10;  // 竞价结果：成功/失败/暂停
+  google.protobuf.Timestamp auction_time = 11;
+}
+
+message AuctionDetail {
+  double price = 1;            // 委托价格
+  int64 volume = 2;            // 委托量
+  int32 orders = 3;            // 委托单数
+  string direction = 4;        // 方向：BUY/SELL
+}
+
+// 风险预警信息
+message RiskWarning {
+  string warning_id = 1;
+  string symbol = 2;
+  string name = 3;
+  string warning_type = 4;     // 预警类型：价格异动/量能异常/资金异常/技术风险等
+  string warning_level = 5;    // 预警等级：LOW/MEDIUM/HIGH/CRITICAL
+  string description = 6;      // 预警描述
+  double trigger_value = 7;    // 触发值
+  double threshold = 8;        // 阈值
+  repeated string factors = 9; // 影响因子
+  google.protobuf.Timestamp warning_time = 10;
+  bool is_active = 11;         // 是否激活
+}
+
+// 竞价抢筹数据
+message AuctionRush {
+  string symbol = 1;
+  string name = 2;
+  double rush_price = 3;       // 抢筹价格
+  double rush_volume = 4;      // 抢筹量
+  double rush_amount = 5;      // 抢筹金额
+  int32 rush_orders = 6;       // 抢筹单数
+  double price_impact = 7;     // 价格冲击
+  string rush_type = 8;        // 抢筹类型：资金抢筹/机构抢筹/散户抢筹
+  google.protobuf.Timestamp rush_time = 9;
+}
+
+// 竞价专题增强版
+message AuctionAdvanced {
+  AuctionData basic_data = 1;
+  repeated AuctionRush rush_data = 2;
+  double auction_quality = 3;  // 竞价质量评分
+  double participation_rate = 4; // 参与率
+  double price_efficiency = 5;  // 价格效率
+  repeated InstitutionalAuction institutional_data = 6; // 机构竞价数据
+  google.protobuf.Timestamp analysis_time = 7;
+}
+
+message InstitutionalAuction {
+  string institution_type = 1; // 机构类型：基金/券商/保险/外资等
+  double buy_volume = 2;       // 买入量
+  double sell_volume = 3;      // 卖出量
+  double net_buy = 4;          // 净买入
+  double participation_ratio = 5; // 参与比例
+}
+
+// 基础数据增强
+message BasicDataEnhanced {
+  string symbol = 1;
+  string name = 2;
+  string market = 3;           // 市场
+  string industry = 4;         // 行业
+  repeated string concepts = 5; // 概念板块
+  double total_mv = 6;         // 总市值
+  double float_mv = 7;         // 流通市值
+  double pe_ratio = 8;         // PE
+  double pb_ratio = 9;         // PB
+  double roe = 10;             // ROE
+  double debt_ratio = 11;      // 负债率
+  double profit_growth = 12;   // 利润增长率
+  google.protobuf.Timestamp update_time = 13;
+}
+
+// 交易日历
+message TradingCalendar {
+  string date = 1;             // 日期 YYYY-MM-DD
+  string day_type = 2;         // 类型：TRADING/NON_TRADING/HALF_TRADING
+  string market_status = 3;    // 市场状态：OPEN/CLOSED/HALTED
+  repeated MarketEvent events = 4; // 当日事件
+  string description = 5;      // 描述
+}
+
+message MarketEvent {
+  string event_type = 1;       // 事件类型：DIVIDEND/SPLIT/IPO等
+  string symbol = 2;           // 相关股票
+  string description = 3;      // 事件描述
+  google.protobuf.Timestamp event_time = 4;
+}
+
+// ST股列表
+message STStock {
+  string symbol = 1;
+  string name = 2;
+  string st_type = 3;          // ST类型：ST/*ST/PST
+  string reason = 4;           // ST原因
+  string start_date = 5;       // ST开始日期
+  string end_date = 6;         // ST结束日期（预计）
+  int32 consecutive_days = 7;  // 连续ST天数
+  string status = 8;           // 当前状态
+}
+
+// 龙虎榜单
+message DragonTigerList {
+  string symbol = 1;
+  string name = 2;
+  string date = 3;             // 上榜日期
+  repeated BuyerTop buyer_top = 4; // 买方前5
+  repeated SellerTop seller_top = 5; // 卖方前5
+  double total_buy_amount = 6; // 总买入金额
+  double total_sell_amount = 7; // 总卖出金额
+  double net_buy_amount = 8;   // 净买入金额
+  string reason = 9;           // 上榜原因
+}
+
+message BuyerTop {
+  string broker_name = 1;      // 券商名称
+  double buy_amount = 2;       // 买入金额
+  double buy_ratio = 3;        // 买入占比
+}
+
+message SellerTop {
+  string broker_name = 1;      // 券商名称
+  double sell_amount = 2;       // 卖出金额
+  double sell_ratio = 3;        // 卖出占比
+}
+
+// 资金流向
+message CapitalFlow {
+  string symbol = 1;
+  string name = 2;
+  string date = 3;
+  double main_inflow = 4;      // 主力流入
+  double main_outflow = 5;     // 主力流出
+  double main_net = 6;         // 主力净流入
+  double retail_inflow = 7;    // 散户流入
+  double retail_outflow = 8;   // 散户流出
+  double retail_net = 9;       // 散户净流入
+  double total_turnover = 10;  // 总成交额
+  double capital_flow_ratio = 11; // 资金流向比例
+}
+
+// 请求/响应消息
+message GetAuctionDataReq {
+  repeated string symbols = 1;
+  string date = 2;             // 指定日期，默认当天
+}
+
+message GetAuctionDataResp {
+  repeated AuctionData auction_data = 1;
+}
+
+message GetRiskWarningsReq {
+  string warning_level = 1;    // 预警等级筛选
+  string symbol = 2;           // 股票筛选
+  bool only_active = 3;        // 仅显示激活的预警
+}
+
+message GetRiskWarningsResp {
+  repeated RiskWarning warnings = 1;
+}
+
+message GetAuctionAdvancedReq {
+  repeated string symbols = 1;
+  string date = 2;
+}
+
+message GetAuctionAdvancedResp {
+  repeated AuctionAdvanced advanced_data = 1;
+}
+
+message GetBasicDataEnhancedReq {
+  repeated string symbols = 1;
+}
+
+message GetBasicDataEnhancedResp {
+  repeated BasicDataEnhanced enhanced_data = 1;
+}
+
+message GetTradingCalendarReq {
+  string start_date = 1;
+  string end_date = 2;
+  string market = 3;           // 市场筛选
+}
+
+message GetTradingCalendarResp {
+  repeated TradingCalendar calendar = 1;
+}
+
+message GetSTStocksReq {
+  string st_type = 1;          // ST类型筛选
+  bool only_current = 2;       // 仅当前ST股
+}
+
+message GetSTStocksResp {
+  repeated STStock st_stocks = 1;
+}
+
+message GetDragonTigerListReq {
+  string date = 1;             // 指定日期
+  string symbol = 2;           // 股票筛选
+  int32 limit = 3;             // 返回数量，默认50
+}
+
+message GetDragonTigerListResp {
+  repeated DragonTigerList dragon_tiger_list = 1;
+}
+
+message GetCapitalFlowReq {
+  repeated string symbols = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message GetCapitalFlowResp {
+  repeated CapitalFlow capital_flows = 1;
+}
+
+// SpecialAnalysisService 服务定义
+service SpecialAnalysisService {
+  // 竞价专题
+  rpc GetAuctionData(GetAuctionDataReq) returns (GetAuctionDataResp);
+
+  // 风险预警
+  rpc GetRiskWarnings(GetRiskWarningsReq) returns (GetRiskWarningsResp);
+
+  // 竞价抢筹
+  rpc GetAuctionRush(GetAuctionRushReq) returns (GetAuctionRushResp);
+
+  // 竞价专题增强版
+  rpc GetAuctionAdvanced(GetAuctionAdvancedReq) returns (GetAuctionAdvancedResp);
+
+  // 基础数据增强
+  rpc GetBasicDataEnhanced(GetBasicDataEnhancedReq) returns (GetBasicDataEnhancedResp);
+
+  // 交易日历
+  rpc GetTradingCalendar(GetTradingCalendarReq) returns (GetTradingCalendarResp);
+
+  // ST股列表
+  rpc GetSTStocks(GetSTStocksReq) returns (GetSTStocksResp);
+
+  // 龙虎榜单
+  rpc GetDragonTigerList(GetDragonTigerListReq) returns (GetDragonTigerListResp);
+
+  // 资金流向
+  rpc GetCapitalFlow(GetCapitalFlowReq) returns (GetCapitalFlowResp);
+}
+
+// 补充的请求消息
+message GetAuctionRushReq {
+  repeated string symbols = 1;
+  string date = 2;
+}
+
+message GetAuctionRushResp {
+  repeated AuctionRush rush_data = 1;
+}

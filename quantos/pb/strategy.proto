@@ -1,0 +1,232 @@
+// Strategy Service Protocol Buffers
+syntax = "proto3";
+
+package strategy;
+option go_package = "./strategy";
+
+import "google/protobuf/timestamp.proto";
+
+// 策略信息
+message Strategy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;         // 策略分类：趋势/均值回归/事件驱动等
+  string author = 5;           // 策略作者
+  int32 status = 6;            // 状态：1-草稿，2-测试中，3-已发布，4-运行中
+  string code = 7;             // 策略代码
+  map<string, string> params = 8; // 策略参数
+  double sharpe_ratio = 9;     // 夏普比率
+  double max_drawdown = 10;    // 最大回撤
+  double annual_return = 11;   // 年化收益率
+  int32 win_rate = 12;         // 胜率百分比
+  google.protobuf.Timestamp create_time = 13;
+  google.protobuf.Timestamp update_time = 14;
+}
+
+// 大模型策略生成
+message AIGeneratedStrategy {
+  string prompt = 1;           // 用户输入的策略描述
+  string generated_code = 2;   // AI生成的策略代码
+  string explanation = 3;      // 策略解释
+  repeated string risk_warnings = 4; // 风险提示
+  double confidence_score = 5; // 置信度评分
+  google.protobuf.Timestamp generate_time = 6;
+}
+
+// 策略回测结果
+message BacktestResult {
+  string strategy_id = 1;
+  string backtest_id = 2;
+  string symbol = 3;           // 回测标的
+  string start_date = 4;       // 回测开始日期
+  string end_date = 5;         // 回测结束日期
+  double initial_capital = 6;  // 初始资金
+  double final_capital = 7;    // 最终资金
+  double total_return = 8;     // 总收益率
+  double annual_return = 9;    // 年化收益率
+  double sharpe_ratio = 10;    // 夏普比率
+  double max_drawdown = 11;    // 最大回撤
+  int32 total_trades = 12;     // 总交易次数
+  int32 win_trades = 13;       // 盈利交易次数
+  double win_rate = 14;        // 胜率
+  double avg_win = 15;         // 平均盈利
+  double avg_loss = 16;        // 平均亏损
+  double profit_factor = 17;   // 盈利因子
+  repeated TradeRecord trades = 18; // 交易记录
+  repeated DailyReturn returns = 19; // 每日收益
+  google.protobuf.Timestamp backtest_time = 20;
+}
+
+message TradeRecord {
+  string trade_id = 1;
+  string symbol = 2;
+  string direction = 3;        // BUY/SELL
+  double price = 4;
+  int64 quantity = 5;
+  string trade_time = 6;
+  double pnl = 7;             // 盈亏
+}
+
+message DailyReturn {
+  string date = 1;
+  double return_rate = 2;     // 收益率
+  double cumulative_return = 3; // 累计收益率
+}
+
+// 收益回测接口
+message PerformanceAnalysis {
+  string strategy_id = 1;
+  string analysis_period = 2;  // 分析周期：1M/3M/6M/1Y/ALL
+  double total_return = 3;     // 总收益率
+  double annual_return = 4;    // 年化收益率
+  double volatility = 5;       // 波动率
+  double sharpe_ratio = 6;     // 夏普比率
+  double sortino_ratio = 7;    // 索提诺比率
+  double max_drawdown = 8;     // 最大回撤
+  double calmar_ratio = 9;     // 卡尔玛比率
+  double alpha = 10;           // Alpha
+  double beta = 11;            // Beta
+  double information_ratio = 12; // 信息比率
+  double tracking_error = 13;  // 跟踪误差
+  repeated MonthlyReturn monthly_returns = 14;
+  google.protobuf.Timestamp analysis_time = 15;
+}
+
+message MonthlyReturn {
+  string month = 1;            // YYYY-MM格式
+  double return_rate = 2;
+}
+
+// 策略精选
+message FeaturedStrategy {
+  Strategy strategy = 1;
+  double rating = 2;           // 用户评分 0-5
+  int32 votes = 3;             // 投票数
+  int32 favorites = 4;         // 收藏数
+  string featured_reason = 5;  // 精选理由
+  google.protobuf.Timestamp featured_time = 6;
+}
+
+// 请求/响应消息
+message GenerateAIStrategyReq {
+  string prompt = 1;           // 策略描述
+  string market_condition = 2; // 市场条件：bull/bear/sideways
+  string risk_level = 3;       // 风险等级：low/medium/high
+  double target_return = 4;    // 目标收益率
+}
+
+message GenerateAIStrategyResp {
+  AIGeneratedStrategy strategy = 1;
+}
+
+message RunBacktestReq {
+  string strategy_id = 1;
+  string symbol = 2;
+  string start_date = 3;
+  string end_date = 4;
+  double initial_capital = 5;
+  map<string, string> params = 6; // 策略参数
+}
+
+message RunBacktestResp {
+  BacktestResult result = 1;
+}
+
+message GetPerformanceAnalysisReq {
+  string strategy_id = 1;
+  string period = 2;
+}
+
+message GetPerformanceAnalysisResp {
+  PerformanceAnalysis analysis = 1;
+}
+
+message GetFeaturedStrategiesReq {
+  string category = 1;         // 策略分类筛选
+  string sort_by = 2;          // 排序方式：rating/votes/favorites
+  int32 limit = 3;             // 返回数量，默认10
+}
+
+message GetFeaturedStrategiesResp {
+  repeated FeaturedStrategy strategies = 1;
+}
+
+message CreateStrategyReq {
+  string name = 1;
+  string description = 2;
+  string category = 3;
+  string code = 4;
+  map<string, string> params = 5;
+}
+
+message CreateStrategyResp {
+  string strategy_id = 1;
+}
+
+message UpdateStrategyReq {
+  string strategy_id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  string code = 5;
+  map<string, string> params = 6;
+}
+
+message UpdateStrategyResp {
+  bool success = 1;
+}
+
+message GetStrategiesReq {
+  string user_id = 1;
+  string category = 2;
+  int32 status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message GetStrategiesResp {
+  repeated Strategy strategies = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// StrategyService 服务定义
+service StrategyService {
+  // 大模型策略生成
+  rpc GenerateAIStrategy(GenerateAIStrategyReq) returns (GenerateAIStrategyResp);
+
+  // 策略回测
+  rpc RunBacktest(RunBacktestReq) returns (RunBacktestResp);
+
+  // 收益回测接口
+  rpc GetPerformanceAnalysis(GetPerformanceAnalysisReq) returns (GetPerformanceAnalysisResp);
+
+  // 策略精选
+  rpc GetFeaturedStrategies(GetFeaturedStrategiesReq) returns (GetFeaturedStrategiesResp);
+
+  // 策略CRUD
+  rpc CreateStrategy(CreateStrategyReq) returns (CreateStrategyResp);
+  rpc UpdateStrategy(UpdateStrategyReq) returns (UpdateStrategyResp);
+  rpc GetStrategies(GetStrategiesReq) returns (GetStrategiesResp);
+  rpc GetStrategy(GetStrategyReq) returns (GetStrategyResp);
+  rpc DeleteStrategy(DeleteStrategyReq) returns (DeleteStrategyResp);
+}
+
+// 补充的消息定义
+message GetStrategyReq {
+  string strategy_id = 1;
+}
+
+message GetStrategyResp {
+  Strategy strategy = 1;
+}
+
+message DeleteStrategyReq {
+  string strategy_id = 1;
+}
+
+message DeleteStrategyResp {
+  bool success = 1;
+}

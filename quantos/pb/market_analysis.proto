@@ -1,0 +1,199 @@
+// Market Analysis Service Protocol Buffers
+syntax = "proto3";
+
+package marketanalysis;
+option go_package = "./marketanalysis";
+
+import "google/protobuf/timestamp.proto";
+
+// AI选股结果
+message AISmartSelection {
+  string symbol = 1;
+  string name = 2;
+  double score = 3;            // AI评分 0-100
+  string reason = 4;           // 推荐理由
+  repeated string factors = 5; // 影响因子
+  string risk_level = 6;       // 风险等级：LOW/MEDIUM/HIGH
+  double expected_return = 7;  // 预期收益率
+  google.protobuf.Timestamp analysis_time = 8;
+}
+
+// 情绪周期分析
+message SentimentCycle {
+  string symbol = 1;
+  double sentiment_score = 2;  // 情绪得分 -1到1
+  string sentiment_label = 3;  // 情绪标签：极度悲观/悲观/中性/乐观/极度乐观
+  string cycle_phase = 4;      // 周期阶段：筑底/反弹/上涨/高潮/回落/下跌
+  double market_sentiment = 5; // 市场整体情绪
+  double news_sentiment = 6;   // 新闻情绪
+  double social_sentiment = 7; // 社交媒体情绪
+  google.protobuf.Timestamp update_time = 8;
+}
+
+// 技术指标分析
+message TechnicalIndicator {
+  string symbol = 1;
+  string indicator_type = 2;   // 指标类型：MA/MACD/RSI/KDJ/BOLL等
+  map<string, double> values = 3; // 指标值
+  string signal = 4;           // 信号：BUY/SELL/HOLD
+  double strength = 5;         // 信号强度 0-100
+  google.protobuf.Timestamp calc_time = 6;
+}
+
+// 板块龙头股
+message SectorLeader {
+  string sector_code = 1;      // 板块代码
+  string sector_name = 2;      // 板块名称
+  string leader_symbol = 3;    // 龙头股代码
+  string leader_name = 4;      // 龙头股名称
+  double sector_strength = 5;  // 板块强度
+  double leader_strength = 6;  // 龙头强度
+  double correlation = 7;      // 相关性
+  google.protobuf.Timestamp update_time = 8;
+}
+
+// 涨停股池
+message LimitUpPool {
+  string symbol = 1;
+  string name = 2;
+  double limit_up_price = 3;   // 涨停价
+  double current_price = 4;    // 当前价
+  int32 consecutive_days = 5;  // 连板天数
+  string reason = 6;           // 涨停原因
+  double turnover_rate = 7;    // 换手率
+  google.protobuf.Timestamp first_limit_time = 8; // 首次涨停时间
+}
+
+// 板块概念
+message SectorConcept {
+  string concept_code = 1;
+  string concept_name = 2;
+  repeated string stocks = 3;  // 所属股票列表
+  double hot_score = 4;        // 热门度评分
+  double rise_fall = 5;        // 涨跌幅
+  int64 total_volume = 6;      // 总成交量
+  google.protobuf.Timestamp update_time = 7;
+}
+
+// 异动数据
+message AbnormalMovement {
+  string symbol = 1;
+  string name = 2;
+  string movement_type = 3;    // 异动类型：涨停/跌停/炸板/大单等
+  double price_change = 4;     // 价格变动
+  double volume_ratio = 5;     // 量比
+  string trigger_reason = 6;   // 触发原因
+  google.protobuf.Timestamp movement_time = 7;
+}
+
+// 游资数据
+message HotMoneyData {
+  string symbol = 1;
+  string name = 2;
+  string institution_name = 3; // 游资机构名称
+  string operation_type = 4;   // 操作类型：买入/卖出
+  double amount = 5;           // 操作金额
+  double price = 6;            // 操作价格
+  google.protobuf.Timestamp operation_time = 7;
+}
+
+// 请求/响应消息
+message GetAISmartSelectionReq {
+  string strategy_type = 1;    // 策略类型：growth/value/momentum等
+  int32 limit = 2;             // 返回数量，默认10
+  double min_score = 3;        // 最小评分，默认60
+}
+
+message GetAISmartSelectionResp {
+  repeated AISmartSelection selections = 1;
+}
+
+message GetSentimentCycleReq {
+  repeated string symbols = 1;
+}
+
+message GetSentimentCycleResp {
+  repeated SentimentCycle sentiments = 1;
+}
+
+message GetTechnicalIndicatorsReq {
+  string symbol = 1;
+  repeated string indicator_types = 2; // 为空时返回所有指标
+}
+
+message GetTechnicalIndicatorsResp {
+  repeated TechnicalIndicator indicators = 1;
+}
+
+message GetSectorLeadersReq {
+  repeated string sectors = 1; // 为空时返回所有板块龙头
+}
+
+message GetSectorLeadersResp {
+  repeated SectorLeader leaders = 1;
+}
+
+message GetLimitUpPoolReq {
+  int32 days = 1;              // 连板天数，默认1
+}
+
+message GetLimitUpPoolResp {
+  repeated LimitUpPool stocks = 1;
+}
+
+message GetSectorConceptsReq {
+  string sort_by = 1;          // 排序方式：hot_score/rise_fall/volume
+  int32 limit = 2;             // 返回数量，默认20
+}
+
+message GetSectorConceptsResp {
+  repeated SectorConcept concepts = 1;
+}
+
+message GetAbnormalMovementsReq {
+  string movement_type = 1;    // 异动类型筛选
+  string start_time = 2;       // 开始时间
+  string end_time = 3;         // 结束时间
+}
+
+message GetAbnormalMovementsResp {
+  repeated AbnormalMovement movements = 1;
+}
+
+message GetHotMoneyDataReq {
+  string symbol = 1;           // 指定股票，为空时返回全部
+  string start_date = 2;
+  string end_date = 3;
+  int32 limit = 4;             // 返回数量，默认50
+}
+
+message GetHotMoneyDataResp {
+  repeated HotMoneyData hot_money_data = 1;
+}
+
+// MarketAnalysisService 服务定义
+service MarketAnalysisService {
+  // AI智能选股
+  rpc GetAISmartSelection(GetAISmartSelectionReq) returns (GetAISmartSelectionResp);
+
+  // 情绪周期分析
+  rpc GetSentimentCycle(GetSentimentCycleReq) returns (GetSentimentCycleResp);
+
+  // 技术指标分析
+  rpc GetTechnicalIndicators(GetTechnicalIndicatorsReq) returns (GetTechnicalIndicatorsResp);
+
+  // 板块龙头股
+  rpc GetSectorLeaders(GetSectorLeadersReq) returns (GetSectorLeadersResp);
+
+  // 涨停股池
+  rpc GetLimitUpPool(GetLimitUpPoolReq) returns (GetLimitUpPoolResp);
+
+  // 板块概念
+  rpc GetSectorConcepts(GetSectorConceptsReq) returns (GetSectorConceptsResp);
+
+  // 异动数据
+  rpc GetAbnormalMovements(GetAbnormalMovementsReq) returns (GetAbnormalMovementsResp);
+
+  // 游资数据
+  rpc GetHotMoneyData(GetHotMoneyDataReq) returns (GetHotMoneyDataResp);
+}

@@ -19,6 +19,13 @@ type ServiceContext struct {
 	StrategyWorkshopRpc zrpc.Client
 	AiAssistantRpc       zrpc.Client
 	SmartExecutionRpc    zrpc.Client
+
+	// 新增的stockApi RPC客户端
+	StockDataRpc       zrpc.Client
+	MarketAnalysisRpc  zrpc.Client
+	StrategyRpc        zrpc.Client
+	TradingRpc         zrpc.Client
+	SpecialAnalysisRpc zrpc.Client
 	// 通用组件
 	Common *common.Common
 }
@@ -39,6 +46,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		StrategyWorkshopRpc: zrpc.MustNewClient(c.StrategyWorkshop),
 		AiAssistantRpc:       zrpc.MustNewClient(c.AiAssistant),
 		SmartExecutionRpc:    zrpc.MustNewClient(c.SmartExecution),
+
+		// 初始化新增的stockApi RPC客户端
+		StockDataRpc:       zrpc.MustNewClient(c.StockData),
+		MarketAnalysisRpc:  zrpc.MustNewClient(c.MarketAnalysis),
+		StrategyRpc:        zrpc.MustNewClient(c.Strategy),
+		TradingRpc:         zrpc.MustNewClient(c.Trading),
+		SpecialAnalysisRpc: zrpc.MustNewClient(c.SpecialAnalysis),
 		// 初始化通用组件 - 使用安全的数据库连接池配置
 		Common: common.NewCommon(
 			c.DB.Host,

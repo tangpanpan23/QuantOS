@@ -71,7 +71,7 @@ data:
 
     # 安全配置
     Security:
-      CorsAllowedOrigins: "https://quantos.tal.com,https://app.tal.com"
+      CorsAllowedOrigins: "http://localhost:3000,http://localhost:8080"
       RateLimitPerMinute: 1000  # 生产环境更高的限流
 
     # 功能开关 - 生产环境配置
@@ -207,10 +207,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - api.quantos.tal.com
+    - api.quantos.local
     secretName: api-tls
   rules:
-  - host: api.quantos.tal.com
+  - host: api.quantos.local
     http:
       paths:
       - path: /

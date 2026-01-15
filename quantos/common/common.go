@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"time"
 	"quantos/app/model/market"
+	"quantos/app/model/market/analysis"
+	"quantos/app/model/market/kline"
+	"quantos/app/model/market/realtime"
+	"quantos/app/model/market/trading"
 	"quantos/app/model/user"
 
 	"gorm.io/driver/mysql"
@@ -45,15 +49,48 @@ func NewCommon(host string, port int, user, password, database string, maxIdleCo
 
 	// 自动迁移表结构
 	err = db.AutoMigrate(
+		// 用户相关模型
 		&user.User{},
 		&user.Strategy{},
 		&user.Portfolio{},
 		&user.Position{},
+
+		// 市场基础数据模型
 		&market.MarketData{},
 		&market.NewsData{},
 		&market.PolicyData{},
 		&market.FactorData{},
 		&market.IndexData{},
+		&market.StockBasic{},
+		&market.FundBasic{},
+		&market.LimitUpPool{},
+		&market.DragonTigerList{},
+
+		// 实时数据模型
+		&realtime.RealTimeQuote{},
+		&realtime.Level2Data{},
+		&realtime.MarketCapitalFlow{},
+		&realtime.TradingCalendar{},
+
+		// K线数据模型
+		&kline.KlineData{},
+		&kline.SectorKlineData{},
+		&kline.IndexKlineData{},
+
+		// 分析数据模型
+		&analysis.MarketSentiment{},
+		&analysis.StockSentiment{},
+		&analysis.SectorAnalysis{},
+		&analysis.TechnicalIndicator{},
+		&analysis.StockRanking{},
+		&analysis.AbnormalMovement{},
+
+		// 交易数据模型
+		&trading.TradeOrder{},
+		&trading.TradeExecution{},
+		&trading.AccountBalance{},
+		&trading.RiskControl{},
+		&trading.AuctionData{},
 	)
 	if err != nil {
 		panic(fmt.Sprintf("数据库迁移失败: %v", err))

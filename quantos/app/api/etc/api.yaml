@@ -48,6 +48,27 @@ SmartExecution:
   Endpoints:
     - ${SMART_EXECUTION_ENDPOINT:localhost:8084}
 
+# 新增的stockApi服务配置
+StockData:
+  Endpoints:
+    - ${STOCK_DATA_ENDPOINT:localhost:8085}
+
+MarketAnalysis:
+  Endpoints:
+    - ${MARKET_ANALYSIS_ENDPOINT:localhost:8086}
+
+Strategy:
+  Endpoints:
+    - ${STRATEGY_ENDPOINT:localhost:8087}
+
+Trading:
+  Endpoints:
+    - ${TRADING_ENDPOINT:localhost:8088}
+
+SpecialAnalysis:
+  Endpoints:
+    - ${SPECIAL_ANALYSIS_ENDPOINT:localhost:8089}
+
 # 日志配置
 Log:
   ServiceName: ${APP_NAME:api}

@@ -1,0 +1,187 @@
+// Trading Service Protocol Buffers
+syntax = "proto3";
+
+package trading;
+option go_package = "./trading";
+
+import "google/protobuf/timestamp.proto";
+
+// 订单信息
+message Order {
+  string order_id = 1;         // 订单ID
+  string user_id = 2;          // 用户ID
+  string symbol = 3;           // 股票代码
+  string symbol_name = 4;      // 股票名称
+  string direction = 5;        // 方向：BUY/SELL
+  string order_type = 6;       // 订单类型：MARKET/LIMIT/STOP
+  double price = 7;            // 委托价格
+  int64 quantity = 8;          // 委托数量
+  int64 filled_quantity = 9;   // 已成交数量
+  double avg_fill_price = 10;  // 平均成交价
+  string status = 11;          // 状态：PENDING/SUBMITTED/PARTIAL_FILLED/FILLED/CANCELLED/REJECTED
+  string strategy_id = 12;     // 策略ID（可选）
+  string broker_account = 13;  // 券商账户
+  google.protobuf.Timestamp create_time = 14;
+  google.protobuf.Timestamp update_time = 15;
+  string reject_reason = 16;   // 拒绝原因
+}
+
+// 成交记录
+message Trade {
+  string trade_id = 1;         // 成交ID
+  string order_id = 2;         // 订单ID
+  string user_id = 3;          // 用户ID
+  string symbol = 4;           // 股票代码
+  string direction = 5;        // 方向：BUY/SELL
+  double price = 6;            // 成交价格
+  int64 quantity = 7;          // 成交数量
+  double amount = 8;           // 成交金额
+  double fee = 9;              // 手续费
+  google.protobuf.Timestamp trade_time = 10;
+  string broker_trade_id = 11; // 券商成交ID
+}
+
+// 账户信息
+message Account {
+  string account_id = 1;       // 账户ID
+  string user_id = 2;          // 用户ID
+  string broker_name = 3;      // 券商名称
+  string account_type = 4;     // 账户类型：STOCK/MARGIN/FUTURES
+  double total_assets = 5;     // 总资产
+  double available_cash = 6;   // 可用现金
+  double market_value = 7;     // 市值
+  double total_profit = 8;     // 总盈亏
+  double day_profit = 9;       // 日盈亏
+  google.protobuf.Timestamp update_time = 10;
+}
+
+// 持仓信息
+message Position {
+  string account_id = 1;       // 账户ID
+  string symbol = 2;           // 股票代码
+  string symbol_name = 3;      // 股票名称
+  int64 total_quantity = 4;    // 总持仓数量
+  int64 available_quantity = 5; // 可用数量
+  double avg_cost = 6;         // 平均成本
+  double current_price = 7;    // 当前价格
+  double market_value = 8;     // 市值
+  double profit_loss = 9;      // 盈亏
+  double profit_loss_ratio = 10; // 盈亏比例
+  google.protobuf.Timestamp update_time = 11;
+}
+
+// 下单请求
+message PlaceOrderReq {
+  string user_id = 1;
+  string symbol = 2;
+  string direction = 3;        // BUY/SELL
+  string order_type = 4;       // MARKET/LIMIT/STOP
+  double price = 5;            // 委托价格（市价单可为空）
+  int64 quantity = 6;          // 委托数量
+  string strategy_id = 7;      // 策略ID（可选）
+  string broker_account = 8;   // 指定券商账户
+}
+
+message PlaceOrderResp {
+  string order_id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+// 撤单请求
+message CancelOrderReq {
+  string order_id = 1;
+  string user_id = 2;          // 验证用户权限
+}
+
+message CancelOrderResp {
+  bool success = 1;
+  string message = 2;
+}
+
+// 查询订单
+message GetOrdersReq {
+  string user_id = 1;
+  string symbol = 2;           // 股票筛选（可选）
+  string status = 3;           // 状态筛选（可选）
+  string start_date = 4;       // 开始日期
+  string end_date = 5;         // 结束日期
+  int32 page = 6;              // 页码，默认1
+  int32 page_size = 7;         // 每页大小，默认20
+}
+
+message GetOrdersResp {
+  repeated Order orders = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// 查询成交记录
+message GetTradesReq {
+  string user_id = 1;
+  string symbol = 2;
+  string start_date = 3;
+  string end_date = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message GetTradesResp {
+  repeated Trade trades = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// 查询账户信息
+message GetAccountReq {
+  string user_id = 1;
+  string account_id = 2;       // 指定账户（可选）
+}
+
+message GetAccountResp {
+  repeated Account accounts = 1;
+}
+
+// 查询持仓信息
+message GetPositionsReq {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;           // 股票筛选（可选）
+}
+
+message GetPositionsResp {
+  repeated Position positions = 1;
+}
+
+// 风控检查请求
+message RiskCheckReq {
+  string user_id = 1;
+  string symbol = 2;
+  string direction = 3;
+  double price = 4;
+  int64 quantity = 5;
+}
+
+message RiskCheckResp {
+  bool approved = 1;
+  string message = 2;
+  repeated string warnings = 3;
+}
+
+// TradingService 服务定义
+service TradingService {
+  // 下单买卖
+  rpc PlaceOrder(PlaceOrderReq) returns (PlaceOrderResp);
+  rpc CancelOrder(CancelOrderReq) returns (CancelOrderResp);
+
+  // 查询接口
+  rpc GetOrders(GetOrdersReq) returns (GetOrdersResp);
+  rpc GetTrades(GetTradesReq) returns (GetTradesResp);
+  rpc GetAccount(GetAccountReq) returns (GetAccountResp);
+  rpc GetPositions(GetPositionsReq) returns (GetPositionsResp);
+
+  // 风控检查
+  rpc RiskCheck(RiskCheckReq) returns (RiskCheckResp);
+}

@@ -37,6 +37,13 @@ type Config struct {
 	AiAssistant      zrpc.RpcClientConf
 	SmartExecution   zrpc.RpcClientConf
 
+	// 新增的stockApi服务配置
+	StockData       zrpc.RpcClientConf
+	MarketAnalysis  zrpc.RpcClientConf
+	Strategy        zrpc.RpcClientConf
+	Trading         zrpc.RpcClientConf
+	SpecialAnalysis zrpc.RpcClientConf
+
 	// 其他配置
 	Log       LogConf
 	Telemetry TelemetryConf
