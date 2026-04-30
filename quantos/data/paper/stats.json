@@ -1,0 +1,15 @@
+{
+  "initial_capital": 100000,
+  "current_capital": 57376.35800556224,
+  "total_value": 57376.35800556224,
+  "positions_value": 0,
+  "total_pnl": -2623.6299999999997,
+  "return_rate": -42.62364199443776,
+  "total_trades": 14,
+  "wins": 4,
+  "losses": 10,
+  "win_rate": 28.57142857142857,
+  "avg_win": 676.44,
+  "avg_loss": 532.9390000000001,
+  "current_positions": 0
+}

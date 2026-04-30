@@ -22,5 +22,5 @@ func main() {
 
 func init() {
 	// 添加子命令
-	rootCmd.AddCommand(migrateCmd)
+	rootCmd.AddCommand(paperCmd)
 }
