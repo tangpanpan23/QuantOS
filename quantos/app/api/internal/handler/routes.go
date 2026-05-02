@@ -9,16 +9,16 @@ import (
 )
 
 func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
-	// 健康检查
+	// 健康检查（公开，无需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
 			Path:    "/health",
 			Handler: healthHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
-	// 用户相关路由
+	// 用户相关路由（公开，无需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -30,8 +30,9 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/user/login",
 			Handler: userLoginHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
+	// 用户详情（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -45,7 +46,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 策略相关路由
+	// 策略管理（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -79,7 +80,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 投资组合相关路由
+	// 投资组合（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -98,7 +99,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 市场数据相关路由
+	// 市场数据（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -112,7 +113,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 新闻数据相关路由
+	// 新闻政策（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -126,7 +127,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 策略工坊相关路由
+	// 策略工坊（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -145,7 +146,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// AI助手相关路由
+	// AI 助手（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -159,9 +160,8 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// StockApi 股票数据相关路由
+	// StockApi 股票数据（需认证）
 	server.AddRoutes([]rest.Route{
-		// 基础数据接口
 		{
 			Method:  http.MethodGet,
 			Path:    "/api/v1/stock/list",
@@ -189,7 +189,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 市场分析相关路由
+	// 市场分析（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,
@@ -233,7 +233,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 策略相关路由（增强版）
+	// 策略（增强版，需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -257,7 +257,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 交易相关路由
+	// 交易（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodPost,
@@ -296,7 +296,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	}, rest.WithJwt(ctx.JwtAuthMiddleware))
 
-	// 专项分析相关路由
+	// 专项分析（需认证）
 	server.AddRoutes([]rest.Route{
 		{
 			Method:  http.MethodGet,

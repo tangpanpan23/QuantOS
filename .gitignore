@@ -1,2 +1,76 @@
-# Ignore rules files
+# =============================================
+# Go
+# =============================================
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+
+# Go output
+bin/
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# =============================================
+# Environment & Secrets
+# =============================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials/
+
+# =============================================
+# IDE & Editor
+# =============================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Cursor rules (local AI rules)
 .cursor/rules/
+
+# =============================================
+# Logs & Data
+# =============================================
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# Market data cache
+data/cache/
+data/temp/
+
+# Coverage
+coverage.out
+coverage.html
+
+# =============================================
+# Docker
+# =============================================
+.dockerignore
+
+# =============================================
+# Temporary
+# =============================================
+tmp/
+temp/
+*.tmp
+dist/
+build/

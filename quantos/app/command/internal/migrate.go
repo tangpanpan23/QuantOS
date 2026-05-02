@@ -100,11 +100,6 @@ func showMigrationStatus() error {
 		return err
 	}
 
-	downFiles, err := getMigrationFiles("down")
-	if err != nil {
-		return err
-	}
-
 	fmt.Println("迁移状态:")
 	fmt.Println("==========")
 

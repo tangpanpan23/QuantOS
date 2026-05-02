@@ -1,256 +1,152 @@
-# QuantSaaS
+# QuantSaaS - Go 主应用
 
-基于感知-决策智能的量化策略平台
+> 本目录是 QuantSaaS 平台的 Go 后端主应用，基于 go-zero 微服务框架。
 
-## 📖 项目简介
+## 📖 快速开始
 
-QuantSaaS 是首个将宏观政策感知、AI辅助决策与用户自主创造深度融合的量化策略SaaS平台，实现量化投资的"技术民主化"。
-
-## ✨ 核心特性
-
-### 🎯 新闻政策感知引擎
-- 多源数据接入：新华社、央行、交易所等官方数据
-- NLP情感分析：情感打分、事件提取、影响传导图谱
-- 因子工厂：自动生成量化投资因子
-
-### 🏭 策略工坊
-- 三层架构：AI生成层 → 策略超市层 → 用户定制层
-- 多模式支持：自然语言、流程图、专业代码IDE
-- 智能协同：AI启发，人类决策
-
-### 🤖 AI辅助决策中心
-- 策略优化建议和逻辑分析
-- 行业轮动信号和趋势预测
-- 收益归因解读和风险评估
-
-### ⚡ 智能执行与风控
-- 合规前置检查和实时审核
-- 个性化风控规则和熔断机制
-- 策略托管和自动执行
-
-## 🏗️ 技术架构
-
-```
-数据源层          计算中台层          应用服务层          接入层
-├── 行情数据      ├── 流处理引擎    ├── API服务        ├── WebSocket
-├── 新闻政策      ├── 批量计算      ├── 感知引擎       ├── REST API
-└── 基本面数据    ├── AI模型服务    ├── 策略工坊       └── 移动端
-                   ├── 策略运行时    ├── AI决策中心
-                   └── 风控引擎      └── 执行服务
-```
-
-## 🚀 快速开始
-
-### Docker环境（推荐）
 ```bash
-make dev          # 启动开发环境
-make migrate-up   # 执行数据库迁移
-make dev-logs     # 查看服务状态
-```
-
-### 本地环境
-```bash
+# 1. 安装依赖
 go mod download
-docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=quantos123 -p 3306:3306 mysql:8.0
-docker run -d --name redis -p 6379:6379 redis:7-alpine
-go run app/command/console.go migrate up
+
+# 2. 配置环境
+cp .env.example .env
+# 编辑 .env 填入实际值
+
+# 3. 启动基础设施
+make dev
+
+# 4. 数据库迁移
+make migrate-up
+
+# 5. 启动 API
 make run-api
-```
 
-### 验证服务
-```bash
+# 6. 验证
 curl http://localhost:8888/health
-# {"status":"ok","service":"quantos-api"}
 ```
 
-## 📋 API示例
-
-### 用户注册
-```bash
-curl -X POST http://localhost:8888/api/v1/user/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","email":"demo@126.com","password":"demo123"}'
-```
-
-### 获取Token
-```bash
-curl -X POST http://localhost:8888/api/v1/user/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"demo123"}'
-```
-
-## 💼 商业模式
-
-### Freemium订阅体系
-- **免费版**：基础行情、新闻摘要、简易回测
-- **专业版**：全量数据、高级因子、无限制回测
-- **机构版**：私有部署、专属数据源、独立风控
-
-### 增值服务
-- 📊 数据超市：第三方特色数据购买
-- 🤝 策略托管：优秀策略分享与收益分成
-- 👨‍💼 专家咨询：行业分析师一对一服务
-
-## 🛠️ 技术栈
-
-- **框架**：go-zero 微服务框架
-- **语言**：Go 1.22
-- **存储**：MySQL + Redis
-- **消息**：Apache Pulsar
-- **部署**：Docker + Kubernetes
-
-## 📁 项目结构
+## 📁 目录结构
 
 ```
 quantos/
-├── app/                    # 应用服务层
-│   ├── api/               # REST API服务 ✅
-│   ├── newsPolicyEngine/  # 新闻政策感知引擎 🟡
-│   ├── strategyWorkshop/  # 策略工坊 🟡
-│   ├── aiAssistant/       # AI决策中心 🟡
-│   ├── smartExecution/    # 智能执行服务 🟡
-│   ├── stockData/         # 股票数据服务 🆕
-│   ├── marketAnalysis/    # 市场分析服务 🆕
-│   ├── trading/           # 交易服务 🆕
-│   ├── specialAnalysis/   # 专项分析服务 🆕
-│   ├── command/           # 命令行工具 ✅
-│   └── model/             # 数据模型 ✅
-├── common/                # 通用工具 ✅
-├── pkg/                   # 业务包 (预留)
-├── constant/              # 常量定义 ✅
-├── database/migrations/   # 数据库迁移 ✅
-└── deploy/               # 部署配置 ✅
+├── app/
+│   ├── api/               # REST API 服务
+│   │   ├── api.go         # 程序入口
+│   │   └── internal/
+│   │       ├── config/    # 配置结构体
+│   │       ├── handler/   # HTTP Handler（路由在此注册）
+│   │       ├── logic/     # 业务逻辑层
+│   │       ├── middleware/# JWT 等中间件
+│   │       ├── svc/       # 服务上下文
+│   │       └── types/     # 请求/响应类型
+│   ├── command/           # 命令行工具
+│   │   ├── console.go     # 数据库迁移工具
+│   │   └── paper.go      # 模拟盘 CLI
+│   └── model/             # 数据模型
+│       ├── user/
+│       └── market/
+│           └── papertrading/  # 模拟交易核心
+├── pb/                    # gRPC Proto 定义
+├── common/                # 通用工具（DB/Redis 初始化）
+├── constant/              # 全局常量
+├── scripts/               # 辅助脚本
+│   └── fetch_market_data.py  # 市场数据获取（Python）
+├── deploy/                # Docker / Kubernetes 配置
+├── Makefile               # 构建工具
+├── go.mod / go.sum        # Go 依赖
+└── .env.example           # 环境变量模板
 ```
 
-## 🔄 开发进度
+## 🛠️ 常用命令
 
-- ✅ 基础架构和API服务
-- ✅ 用户管理和数据模型
-- ✅ 数据库迁移和部署配置
-- ✅ StockApi数据服务集成 (架构设计 + Proto定义)
-- 🟡 RPC服务层 (架构预留)
-- 🟡 核心业务功能 (待开发)
-
-## 📊 StockApi 数据服务功能
-
-### 🎯 已集成功能 (架构设计)
-
-#### 1. 股票数据服务 (StockData)
-- **实时行情**: Level2实时数据、实时报价推送
-- **历史数据**: 股票/板块日K线行情数据
-- **基础数据**: A股列表、大盘指数信息
-- **技术指标**: 实时技术指标计算和分析
-
-#### 2. 市场分析服务 (MarketAnalysis)
-- **AI智能选股**: 基于机器学习的智能选股系统
-- **情绪周期分析**: 市场情绪周期和趋势分析
-- **技术指标**: 专业技术指标分析 (MA/MACD/RSI/KDJ/BOLL)
-- **板块龙头股**: 行业板块龙头股票分析
-- **涨停股池**: 涨停股票实时监控和分析
-- **板块概念**: 概念板块热度和趋势分析
-- **异动数据**: 股票异动实时监控
-- **游资数据**: 游资动向和资金流入流出分析
-
-#### 3. 策略服务 (Strategy)
-- **大模型策略**: AI大模型生成交易策略
-- **策略精选**: 优质策略推荐和评分系统
-- **策略回测**: 专业策略回测引擎和绩效分析
-- **收益回测**: 详细的收益归因和风险分析
-
-#### 4. 交易服务 (Trading)
-- **下单买卖**: 股票交易委托和执行
-- **订单管理**: 订单查询、撤单、状态跟踪
-- **账户管理**: 多账户管理和资金查询
-- **持仓管理**: 实时持仓和盈亏计算
-- **风控检查**: 交易前的风险控制和合规检查
-
-#### 5. 专项分析服务 (SpecialAnalysis)
-- **竞价专题**: 集合竞价数据分析和机会识别
-- **风险预警**: 实时风险监控和预警系统
-- **竞价抢筹**: 竞价阶段资金抢筹分析
-- **基础数据增强**: 财务数据和基本面深度分析
-- **交易日历**: 交易日程和重要事件提醒
-- **ST股列表**: ST股实时监控和风险提示
-- **龙虎榜单**: 机构席位和龙虎榜数据分析
-- **资金流向**: 板块和个股资金流向分析
-
-### 🚀 API接口示例
-
-#### 实时行情查询
 ```bash
-# 获取股票实时行情
-curl -X GET "http://localhost:8888/api/v1/stock/quote?symbols=000001,600000" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+make run-api          # 启动 API 服务 (go run)
+make build            # 构建到 bin/
+make test             # 运行测试
+make migrate-up       # 执行数据库迁移
+make migrate-down     # 回滚迁移
+make fmt              # 格式化代码
+make lint             # 代码检查
+make swagger          # 生成 Swagger 文档
+make clean            # 清理构建产物
+make dev              # Docker 启动基础设施
 ```
 
-#### AI智能选股
+## 🧩 模拟盘 CLI
+
 ```bash
-# 获取AI推荐股票
-curl -X GET "http://localhost:8888/api/v1/market/ai-selection?strategy_type=growth&limit=10" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+# 查看所有命令
+go run app/command/console.go paper --help
+
+# 基本操作
+go run app/command/console.go paper status      # 账户状态
+go run app/command/console.go paper buy 600036 35.50 300 "MA多头"
+go run app/command/console.go paper sell 600036 38.50 "止盈"
+go run app/command/console.go paper signal        # 选股扫描
+go run app/command/console.go paper evolve         # 自主进化
+go run app/command/console.go paper report today  # 生成报告
+go run app/command/console.go paper simulate       # 历史回测
+go run app/command/console.go paper daily          # 每日更新
 ```
 
-#### 策略回测
-```bash
-# 执行策略回测
-curl -X POST "http://localhost:8888/api/v1/strategy/backtest" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "strategy_id": "strategy_001",
-    "symbol": "000001",
-    "start_date": "2024-01-01",
-    "end_date": "2024-12-31",
-    "initial_capital": 100000
-  }'
+## 📊 数据模型
+
+### 主要表结构
+
+| 表名 | 说明 |
+|------|------|
+| `q_paper_account` | 模拟账户 |
+| `q_paper_position` | 持仓记录 |
+| `q_paper_trade` | 交易流水 |
+| `q_strategy_params` | 策略参数（含进化历史） |
+| `q_daily_stats` | 每日统计数据 |
+| `q_evolution_log` | 进化历史记录 |
+
+### 模拟盘策略参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| 初始资金 | ¥100,000 | - |
+| 保留现金 | ¥40,000 | 不用于交易 |
+| 单只最大持仓 | ¥15,000 | - |
+| 最多持仓 | 4 只 | - |
+| 止损线 | 3% | 亏损 3% 触发 |
+| 第一止盈 | 5% | 概率触发 |
+| 第二止盈 | 8% | 触发后清仓 |
+| RSI 买入区间 | 35-65 | 可通过进化优化 |
+
+## 🛡️ API 安全
+
+- 所有业务 API 需要 JWT Token 认证
+- Token 在 `/api/v1/user/login` 获取
+- 放入 Header: `Authorization: Bearer <token>`
+- Token 有效期：`JWT_ACCESS_EXPIRE`（默认 24 小时）
+
+## 📝 开发指南
+
+详细开发指南请参考 [docs/DEVELOPER.md](docs/DEVELOPER.md)。
+
+添加新的 Handler 流程：
+
+```
+1. 在 types/types.go 添加请求/响应结构体
+2. 在 handler/ 创建 Handler 函数
+3. 在 logic/ 创建 Logic 业务逻辑
+4. 在 routes.go 注册路由
 ```
 
-#### 股票交易
-```bash
-# 下单买入
-curl -X POST "http://localhost:8888/api/v1/trading/order" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "symbol": "000001",
-    "direction": "BUY",
-    "order_type": "LIMIT",
-    "price": 10.50,
-    "quantity": 100
-  }'
-```
+## 📚 相关文档
 
-### 🏗️ 技术实现
+- [API 接口文档](docs/API.md)
+- [开发者指南](docs/DEVELOPER.md)
+- [模拟盘使用手册](docs/PAPERTRADING.md)
 
-#### Proto文件定义
-- `pb/stock.proto`: 股票数据服务接口
-- `pb/market_analysis.proto`: 市场分析服务接口
-- `pb/strategy.proto`: 策略服务接口
-- `pb/trading.proto`: 交易服务接口
-- `pb/special_analysis.proto`: 专项分析服务接口
+## 🤝 贡献
 
-#### API路由集成
-- `/api/v1/stock/*`: 股票数据相关接口
-- `/api/v1/market/*`: 市场分析相关接口
-- `/api/v1/strategy/*`: 策略相关接口
-- `/api/v1/trading/*`: 交易相关接口
-- `/api/v1/analysis/*`: 专项分析相关接口
+1. Fork → 特性分支 → PR
+2. 提交前运行 `make fmt && make lint`
+3. 新增 Handler 同步更新 `docs/API.md`
 
-#### 服务架构
-```
-API Gateway (8888)
-├── StockData Service (8085)
-├── MarketAnalysis Service (8086)
-├── Strategy Service (8087)
-├── Trading Service (8088)
-└── SpecialAnalysis Service (8089)
-```
+## 📄 许可证
 
-## 📞 联系我们
-
-- **项目主页**: https://github.com/tangpanpan23
-- **邮箱**: tangpan23@126.com
-
----
-
-*"让量化投资不再是少数人的游戏"* 🚀
+MIT License

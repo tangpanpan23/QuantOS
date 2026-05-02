@@ -40,11 +40,11 @@ def get_realtime_data(symbol):
     
     try:
         # 获取实时行情（东方财富）
-        df = ak.stock_zh_a_spot_em()
+        df_spot = ak.stock_zh_a_spot_em()
         
         # 转换代码格式（去掉前缀0）
         # A股代码格式: 600036
-        row = df[df['代码'] == symbol]
+        row = df_spot[df_spot['代码'] == symbol]
         
         if row.empty:
             return get_mock_realtime(symbol)
