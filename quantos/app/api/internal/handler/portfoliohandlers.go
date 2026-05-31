@@ -284,17 +284,20 @@ func getPaperPositionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 		rows, err := db.WithContext(r.Context()).Raw(`
 			SELECT p.id, p.symbol, b.name, b.industry, b.market,
 			       p.shares, p.avg_cost, p.shares * p.avg_cost as total_cost,
-			       COALESCE(m.close_price, p.avg_cost) as current_price,
-			       COALESCE(m.change_pct, 0) as change_pct,
+			       COALESCE(m.close_price, mc.close_price, p.avg_cost) as current_price,
+			       COALESCE(m.change_pct, mc.change_pct, 0) as change_pct,
 			       COALESCE(m.high_price, 0) as high_price,
 			       COALESCE(m.low_price, 0) as low_price,
 			       COALESCE(m.volume, 0) as volume,
-			       (COALESCE(m.close_price, p.avg_cost) - p.avg_cost) * p.shares as profit,
-			       CASE WHEN p.avg_cost > 0 AND COALESCE(m.close_price, 0) > 0 THEN (COALESCE(m.close_price, p.avg_cost) - p.avg_cost) / p.avg_cost * 100 ELSE 0 END as profit_rate,
-			       p.entry_date
+			       (COALESCE(m.close_price, mc.close_price, p.avg_cost) - p.avg_cost) * p.shares as profit,
+			       CASE WHEN p.avg_cost > 0 AND COALESCE(m.close_price, mc.close_price, 0) > 0 THEN (COALESCE(m.close_price, mc.close_price, p.avg_cost) - p.avg_cost) / p.avg_cost * 100 ELSE 0 END as profit_rate,
+			       p.trade_date as opened_at
 			FROM q_paper_position p
 			LEFT JOIN q_stock_basic b ON p.symbol = b.symbol
 			LEFT JOIN q_market_data m ON p.symbol = m.symbol AND m.trade_date = CURDATE()
+			LEFT JOIN q_market_data mc ON p.symbol = mc.symbol AND mc.trade_date = (
+				SELECT MAX(trade_date) FROM q_market_data WHERE symbol = p.symbol AND trade_date < CURDATE()
+			)
 			WHERE p.account_id = 1
 			ORDER BY profit_rate DESC
 		`).Rows()
@@ -545,27 +548,71 @@ func getRealPositionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 		db := ctx.Common.DB
 		var result []map[string]interface{}
 
-		rows, err := db.WithContext(r.Context()).Raw(`
-			SELECT p.id, p.symbol, b.name, b.industry, b.market,
-			       p.quantity, p.avg_cost, p.quantity * p.avg_cost as total_cost, p.opened_at,
-			       COALESCE(m.close_price, p.avg_cost) as current_price,
-			       COALESCE(m.change_pct, 0) as change_pct,
-			       (COALESCE(m.close_price, p.avg_cost) - p.avg_cost) * p.quantity as profit,
-			       CASE WHEN p.avg_cost > 0 AND COALESCE(m.close_price, 0) > 0 THEN (COALESCE(m.close_price, p.avg_cost) - p.avg_cost) / p.avg_cost * 100 ELSE 0 END as profit_rate
-			FROM q_positions p
-			LEFT JOIN q_stock_basic b ON p.symbol = b.symbol
-			LEFT JOIN q_market_data m ON p.symbol = m.symbol AND m.trade_date = CURDATE()
-			WHERE p.portfolio_id = 1
-			ORDER BY profit_rate DESC
+		// 查今日行情
+		var todayQuotes map[string]struct{ Price, ChangePct float64 }
+		rows, _ := db.WithContext(r.Context()).Raw(`
+			SELECT symbol, close_price, change_pct FROM q_market_data WHERE trade_date = CURDATE()
 		`).Rows()
-		if err == nil {
+		todayQuotes = make(map[string]struct{ Price, ChangePct float64 })
+		if rows != nil {
 			defer rows.Close()
 			for rows.Next() {
+				var sym string
+				var price, pct float64
+				if rows.Scan(&sym, &price, &pct) == nil {
+					todayQuotes[sym] = struct{ Price, ChangePct float64 }{price, pct}
+				}
+			}
+		}
+
+		// 查最近交易日（非今日）
+		var lastQuotes map[string]struct{ Price, ChangePct float64 }
+		lrows, _ := db.WithContext(r.Context()).Raw(`
+			SELECT symbol, close_price, change_pct FROM q_market_data
+			WHERE trade_date = (SELECT MAX(trade_date) FROM q_market_data WHERE trade_date < CURDATE())
+		`).Rows()
+		lastQuotes = make(map[string]struct{ Price, ChangePct float64 })
+		if lrows != nil {
+			defer lrows.Close()
+			for lrows.Next() {
+				var sym string
+				var price, pct float64
+				if lrows.Scan(&sym, &price, &pct) == nil {
+					lastQuotes[sym] = struct{ Price, ChangePct float64 }{price, pct}
+				}
+			}
+		}
+
+		// 查持仓
+		rows2, err := db.WithContext(r.Context()).Raw(`
+			SELECT p.id, p.symbol, b.name, b.industry, b.market,
+			       p.quantity, p.avg_cost, p.quantity * p.avg_cost as total_cost, p.opened_at
+			FROM q_positions p
+			LEFT JOIN q_stock_basic b ON p.symbol = b.symbol
+			WHERE p.portfolio_id = 1
+			ORDER BY (COALESCE(?, p.avg_cost) - p.avg_cost) * p.quantity DESC
+		`, 0.0).Rows()
+		if err == nil {
+			defer rows2.Close()
+			for rows2.Next() {
 				var id int64
 				var symbol, name, industry, market, openedAt string
-				var quantity, avgCost, totalCost, currentPrice, changePct, profit, profitRate float64
-				rows.Scan(&id, &symbol, &name, &industry, &market, &quantity, &avgCost, &totalCost, &openedAt,
-					&currentPrice, &changePct, &profit, &profitRate)
+				var quantity, avgCost, totalCost float64
+				rows2.Scan(&id, &symbol, &name, &industry, &market, &quantity, &avgCost, &totalCost, &openedAt)
+				curPrice := avgCost
+				curPct := 0.0
+				if q, ok := todayQuotes[symbol]; ok {
+					curPrice = q.Price
+					curPct = q.ChangePct
+				} else if q, ok := lastQuotes[symbol]; ok {
+					curPrice = q.Price
+					curPct = q.ChangePct
+				}
+				profit := (curPrice - avgCost) * quantity
+				profitRate := 0.0
+				if avgCost > 0 && curPrice > 0 {
+					profitRate = (curPrice - avgCost) / avgCost * 100
+				}
 				result = append(result, map[string]interface{}{
 					"id":            id,
 					"symbol":        symbol,
@@ -575,8 +622,8 @@ func getRealPositionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 					"shares":        quantity,
 					"avg_cost":      avgCost,
 					"total_cost":    totalCost,
-					"current_price": currentPrice,
-					"change_pct":    changePct,
+					"current_price": curPrice,
+					"change_pct":    curPct,
 					"profit":        profit,
 					"profit_rate":   profitRate,
 					"opened_at":     openedAt,
@@ -759,22 +806,75 @@ func getRealSummaryHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 		var totalInvested, totalValue, totalProfit, totalProfitRate float64
 		var posCount int64
 
-		rows, err := db.WithContext(r.Context()).Raw(`
-			SELECT COALESCE(SUM(quantity * avg_cost),0), COALESCE(SUM(
-				(SELECT COALESCE(close_price, avg_cost) FROM q_market_data WHERE symbol=q_positions.symbol AND trade_date=CURDATE() LIMIT 1) * quantity
-			),0)
-			FROM q_positions WHERE portfolio_id=1 AND quantity > 0
+		// 持仓汇总（先用已知持仓数据计算）
+		var totalInvested, totalValue, totalProfit, totalProfitRate, posCount float64
+		db.WithContext(r.Context()).Raw("SELECT COUNT(*) FROM q_positions WHERE portfolio_id=1 AND quantity>0").Scan(&posCount)
+		posRows, _ := db.WithContext(r.Context()).Raw(`
+			SELECT COALESCE(SUM(quantity * avg_cost), 0) FROM q_positions WHERE portfolio_id=1 AND quantity > 0
 		`).Rows()
-		if err == nil {
-			rows.Scan(&totalInvested, &totalValue)
-			rows.Close()
+		if posRows != nil {
+			posRows.Scan(&totalInvested)
+			posRows.Close()
+		}
+
+		// 今日行情
+		var todayQuotes map[string]struct{ Price, ChangePct float64 }
+		tRows, _ := db.WithContext(r.Context()).Raw(`
+			SELECT symbol, close_price, change_pct FROM q_market_data WHERE trade_date = CURDATE()
+		`).Rows()
+		todayQuotes = make(map[string]struct{ Price, ChangePct float64 })
+		if tRows != nil {
+			defer tRows.Close()
+			for tRows.Next() {
+				var sym string
+				var price, pct float64
+				if tRows.Scan(&sym, &price, &pct) == nil {
+					todayQuotes[sym] = struct{ Price, ChangePct float64 }{price, pct}
+				}
+			}
+		}
+		// 最近交易日
+		var lastQuotes map[string]struct{ Price, ChangePct float64 }
+		lRows, _ := db.WithContext(r.Context()).Raw(`
+			SELECT symbol, close_price, change_pct FROM q_market_data
+			WHERE trade_date = (SELECT MAX(trade_date) FROM q_market_data WHERE trade_date < CURDATE())
+		`).Rows()
+		lastQuotes = make(map[string]struct{ Price, ChangePct float64 })
+		if lRows != nil {
+			defer lRows.Close()
+			for lRows.Next() {
+				var sym string
+				var price, pct float64
+				if lRows.Scan(&sym, &price, &pct) == nil {
+					lastQuotes[sym] = struct{ Price, ChangePct float64 }{price, pct}
+				}
+			}
+		}
+		// 用持仓数据计算总市值
+		pRows2, _ := db.WithContext(r.Context()).Raw(`
+			SELECT symbol, quantity, avg_cost FROM q_positions WHERE portfolio_id=1 AND quantity > 0
+		`).Rows()
+		if pRows2 != nil {
+			defer pRows2.Close()
+			for pRows2.Next() {
+				var sym string
+				var qty, cost float64
+				if pRows2.Scan(&sym, &qty, &cost) != nil {
+					continue
+				}
+				price := cost
+				if q, ok := todayQuotes[sym]; ok {
+					price = q.Price
+				} else if q, ok := lastQuotes[sym]; ok {
+					price = q.Price
+				}
+				totalValue += price * qty
+			}
 		}
 		totalProfit = totalValue - totalInvested
 		if totalInvested > 0 {
 			totalProfitRate = totalProfit / totalInvested * 100
 		}
-
-		db.WithContext(r.Context()).Raw("SELECT COUNT(*) FROM q_positions WHERE portfolio_id=1 AND quantity>0").Scan(&posCount)
 
 		// 年度盈亏（按月统计）
 		var monthly []map[string]interface{}
