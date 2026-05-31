@@ -1,372 +1,288 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-市场数据获取脚本
-通过 akshare 获取 A 股实时行情和历史 K 线数据
-输出 JSON 格式供 Go 调用
+市场数据获取脚本（多源冗余版）
 
-用法:
+用法（完全兼容原接口）：
     python3 fetch_market_data.py realtime <股票代码>
     python3 fetch_market_data.py kline <股票代码> [period] [adjust] [limit]
     python3 fetch_market_data.py rsi <股票代码> [period]
     python3 fetch_market_data.py signal <股票代码>
 
-示例:
+示例：
     python3 fetch_market_data.py realtime 600036
     python3 fetch_market_data.py kline 600036 daily qfq 60
     python3 fetch_market_data.py rsi 600036 14
+    python3 fetch_market_data.py signal 600036
+
+多源架构：
+    实时行情（A股）: Sina > Tencent > AkShare
+    K线数据（A股）  : AkShare > yfinance
+    全球市场        : yfinance
+
+熔断降级：某源连续失败3次后跳过，最长等待30s恢复
+缓存：60s 内同名请求直接返回（内存 LRU）
 """
 
 import sys
 import json
+import logging
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime
+
+# 配置日志（安静模式，默认只输出数据）
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(levelname)s: %(message)s",
+)
+
+# ── 延迟导入 router（可选依赖不影响核心功能）────────────────
 
 try:
-    import akshare as ak
-    import pandas as pd
-    import numpy as np
-    AKSHARE_AVAILABLE = True
+    from stock_fetcher import get_router
+    ROUTER_OK = True
 except ImportError:
-    AKSHARE_AVAILABLE = False
-    print("警告: akshare 未安装，将返回模拟数据")
-    print("安装命令: pip install akshare pandas numpy")
+    ROUTER_OK = False
+    print("# [WARNING] stock_fetcher 模块未找到，请检查 PYTHONPATH", file=sys.stderr)
+    print("# 安装依赖: pip install requests akshare pandas numpy yfinance", file=sys.stderr)
 
 
-def get_realtime_data(symbol):
-    """获取实时行情数据"""
-    if not AKSHARE_AVAILABLE:
-        return get_mock_realtime(symbol)
-    
-    try:
-        # 获取实时行情（东方财富）
-        df_spot = ak.stock_zh_a_spot_em()
-        
-        # 转换代码格式（去掉前缀0）
-        # A股代码格式: 600036
-        row = df_spot[df_spot['代码'] == symbol]
-        
-        if row.empty:
-            return get_mock_realtime(symbol)
-        
-        row = row.iloc[0]
-        
-        # 获取K线计算RSI
-        rsi = calculate_rsi(symbol, 14)
-        
-        return {
-            "symbol": symbol,
-            "name": str(row['名称']),
-            "price": float(row['最新价']) if pd.notna(row['最新价']) else 0,
-            "change_pct": float(row['涨跌幅']) if pd.notna(row['涨跌幅']) else 0,
-            "volume": int(row['成交量']) if pd.notna(row['成交量']) else 0,
-            "amount": float(row['成交额']) if pd.notna(row['成交额']) else 0,
-            "open": float(row['今开']) if pd.notna(row['今开']) else 0,
-            "high": float(row['最高']) if pd.notna(row['最高']) else 0,
-            "low": float(row['最低']) if pd.notna(row['最低']) else 0,
-            "prev_close": float(row['昨收']) if pd.notna(row['昨收']) else 0,
-            "rsi": rsi,
-            "ma5": 0,
-            "ma10": 0,
-            "ma20": 0,
-            "timestamp": int(datetime.now().timestamp())
-        }
-    except Exception as e:
-        print(f"获取实时数据失败: {e}", file=sys.stderr)
-        return get_mock_realtime(symbol)
+# ══════════════════════════════════════════════════════
+#  CLI 入口
+# ══════════════════════════════════════════════════════
+
+def cmd_realtime(symbol: str) -> dict:
+    """实时行情"""
+    if not ROUTER_OK:
+        return _mock_realtime(symbol)
+    router = get_router()
+    return router.fetch_realtime(symbol)
 
 
-def get_mock_realtime(symbol):
-    """返回模拟实时数据"""
+def cmd_kline(symbol: str, period: str = "daily",
+              adjust: str = "qfq", limit: int = 60) -> dict:
+    """K线数据"""
+    if not ROUTER_OK:
+        return _mock_kline(symbol, limit)
+    router = get_router()
+    return router.fetch_kline(symbol, period, adjust, limit)
+
+
+def cmd_rsi(symbol: str, period: int = 14) -> dict:
+    """计算RSI"""
+    if not ROUTER_OK:
+        return {"symbol": symbol, "rsi": 50.0, "source": "mock"}
+    router = get_router()
+    klines = router.fetch_kline(symbol, period="daily", limit=period * 3)
+    closes = [k["close"] for k in klines.get("klines", [])]
+    if len(closes) < period + 1:
+        return {"symbol": symbol, "rsi": 50.0, "source": klines.get("_source", "unknown")}
+    deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+    gains  = [d for d in deltas if d > 0]
+    losses = [-d for d in deltas if d < 0]
+    avg_g  = sum(gains[-period:]) / period if gains else 0
+    avg_l  = sum(losses[-period:]) / period if losses else 0
+    rsi    = 100 - (100 / (1 + avg_g / max(avg_l, 1e-9))) if avg_l else 100
+    return {
+        "symbol":   symbol,
+        "rsi":      round(rsi, 2),
+        "source":   klines.get("_source", "unknown"),
+    }
+
+
+def cmd_signal(symbol: str) -> dict:
+    """选股信号"""
+    if not ROUTER_OK:
+        return _mock_signal(symbol)
+    router = get_router()
+    return router.fetch_signal(symbol)
+
+
+# ══════════════════════════════════════════════════════
+#  诊断命令（新增）
+# ══════════════════════════════════════════════════════
+
+def cmd_health() -> dict:
+    """数据源健康检查"""
+    if not ROUTER_OK:
+        return {"ok": False, "reason": "stock_fetcher not available"}
+    router = get_router()
+    return {
+        "ok":    True,
+        "health": router.health_check(),
+        "circuit": router.circuit_status(),
+        "stats":  router.stats(),
+    }
+
+
+def cmd_cache_clear():
+    """清除缓存"""
+    if not ROUTER_OK:
+        print("# stock_fetcher not available", file=sys.stderr)
+        return
+    router = get_router()
+    if router.cache:
+        router.cache._mem.clear()
+        print("# 缓存已清除")
+    else:
+        print("# 缓存未启用")
+
+
+# ══════════════════════════════════════════════════════
+#  模拟兜底（所有源不可用时的最后防线）
+# ══════════════════════════════════════════════════════
+
+def _mock_realtime(symbol: str) -> dict:
     prices = {
         "600036": {"name": "招商银行", "price": 35.50},
         "600900": {"name": "长江电力", "price": 22.50},
         "601288": {"name": "农业银行", "price": 3.20},
-        "000858": {"name": "五粮液", "price": 150.00},
+        "000858": {"name": "五粮液",   "price": 150.00},
         "300750": {"name": "宁德时代", "price": 200.00},
         "601318": {"name": "中国平安", "price": 42.00},
         "002475": {"name": "立讯精密", "price": 28.00},
         "600519": {"name": "贵州茅台", "price": 1600.00},
     }
-    
     data = prices.get(symbol, {"name": symbol, "price": 20.0})
-    
-    return {
-        "symbol": symbol,
-        "name": data["name"],
-        "price": data["price"],
+    data.update({
+        "symbol":    symbol,
         "change_pct": 0.0,
-        "volume": 1000000,
-        "amount": data["price"] * 1000000,
-        "open": data["price"] * 0.99,
-        "high": data["price"] * 1.02,
-        "low": data["price"] * 0.98,
+        "change":     0.0,
+        "open":       data["price"] * 0.99,
+        "high":       data["price"] * 1.02,
+        "low":        data["price"] * 0.98,
         "prev_close": data["price"],
-        "rsi": 50.0,
-        "ma5": data["price"],
-        "ma10": data["price"],
-        "ma20": data["price"],
-        "timestamp": int(datetime.now().timestamp())
-    }
+        "volume":     1_000_000,
+        "amount":     data["price"] * 1_000_000,
+        "bid_vols":   [0]*5,
+        "ask_vols":   [0]*5,
+        "bid_prs":    [0.0]*5,
+        "ask_prs":    [0.0]*5,
+        "rsi":        50.0,
+        "timestamp":  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "_source":    "mock",
+        "_fallback":  "all_sources_failed",
+    })
+    return data
 
 
-def get_kline_data(symbol, period="daily", adjust="qfq", limit=60):
-    """获取K线数据"""
-    if not AKSHARE_AVAILABLE:
-        return get_mock_kline(symbol, limit)
-    
-    try:
-        # period: daily, weekly, monthly
-        # adjust: qfq(前复权), hfqf(后复权), none(不复权)
-        
-        df = ak.stock_zh_a_hist(
-            symbol=symbol,
-            period=period,
-            start_date=(datetime.now() - timedelta(days=limit * 2)).strftime("%Y%m%d"),
-            end_date=datetime.now().strftime("%Y%m%d"),
-            adjust=adjust
-        )
-        
-        if df is None or df.empty:
-            return get_mock_kline(symbol, limit)
-        
-        # 重命名列
-        df.columns = ['日期', '开盘', '收盘', '最高', '最低', '成交量', '成交额', '振幅', '涨跌幅', '涨跌额', '换手率']
-        
-        # 只返回最近的limit条
-        df = df.tail(limit)
-        
-        # 转换为字典列表
-        result = []
-        for _, row in df.iterrows():
-            result.append({
-                "日期": str(row['日期']),
-                "开盘": float(row['开盘']),
-                "最高": float(row['最高']),
-                "最低": float(row['最低']),
-                "收盘": float(row['收盘']),
-                "成交量": int(row['成交量']),
-                "成交额": float(row['成交额']) if pd.notna(row['成交额']) else 0,
-                "换手率": float(row['换手率']) if pd.notna(row['换手率']) else 0
-            })
-        
-        return result
-        
-    except Exception as e:
-        print(f"获取K线数据失败: {e}", file=sys.stderr)
-        return get_mock_kline(symbol, limit)
-
-
-def get_mock_kline(symbol, limit=60):
-    """返回模拟K线数据"""
+def _mock_kline(symbol: str, limit: int = 60) -> dict:
+    import random
     base_prices = {
         "600036": 35.0, "600900": 22.0, "601288": 3.2,
         "000858": 150.0, "300750": 200.0, "601318": 42.0,
         "002475": 28.0, "600519": 1600.0,
     }
-    
     base_price = base_prices.get(symbol, 20.0)
-    
-    result = []
-    current_price = base_price
-    
+    current    = base_price
+    klines     = []
+    import time as _time
     for i in range(limit - 1, -1, -1):
-        date = datetime.now() - timedelta(days=i)
-        
-        # 跳过周末
-        if date.weekday() >= 5:
+        date = _time.gmtime(_time.time() - i * 86400)
+        if date.tm_wday >= 5:
             continue
-        
-        # 随机波动
-        import random
         change = (random.random() - 0.5) * 0.04
-        current_price = current_price * (1 + change)
-        
-        open_price = current_price * (1 + (random.random() - 0.5) * 0.01)
-        high_price = current_price * (1 + random.random() * 0.02)
-        low_price = current_price * (1 - random.random() * 0.02)
-        
-        result.append({
-            "日期": date.strftime("%Y-%m-%d"),
-            "开盘": round(open_price, 2),
-            "最高": round(high_price, 2),
-            "最低": round(low_price, 2),
-            "收盘": round(current_price, 2),
-            "成交量": int(1000000 + random.random() * 500000),
-            "成交额": current_price * 1000000,
-            "换手率": round(random.random() * 3, 2)
+        current = current * (1 + change)
+        open_   = current * (1 + (random.random() - 0.5) * 0.01)
+        high    = current * (1 + random.random() * 0.02)
+        low     = current * (1 - random.random() * 0.02)
+        vol     = int(1_000_000 + random.random() * 500_000)
+        klines.append({
+            "date":    _time.strftime("%Y-%m-%d", date),
+            "open":    round(open_, 2),
+            "high":    round(high, 2),
+            "low":     round(low, 2),
+            "close":   round(current, 2),
+            "volume":  vol,
+            "amount":  current * vol,
+            "turnover": round(random.random() * 3, 2),
         })
-    
-    return result
-
-
-def calculate_rsi(symbol, period=14):
-    """计算RSI指标"""
-    if not AKSHARE_AVAILABLE:
-        return 50.0
-    
-    try:
-        df = ak.stock_zh_a_hist(
-            symbol=symbol,
-            period="daily",
-            start_date=(datetime.now() - timedelta(days=period * 3)).strftime("%Y%m%d"),
-            end_date=datetime.now().strftime("%Y%m%d"),
-            adjust="qfq"
-        )
-        
-        if df is None or len(df) < period + 1:
-            return 50.0
-        
-        # 计算价格变化
-        deltas = df['收盘'].diff()
-        
-        # 分离涨跌
-        gains = deltas.where(deltas > 0, 0)
-        losses = -deltas.where(deltas < 0, 0)
-        
-        # 计算平均涨跌
-        avg_gain = gains.tail(period).mean()
-        avg_loss = losses.tail(period).mean()
-        
-        if avg_loss == 0:
-            return 100.0
-        
-        rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
-        
-        return round(rsi, 2)
-        
-    except Exception as e:
-        print(f"计算RSI失败: {e}", file=sys.stderr)
-        return 50.0
-
-
-def generate_signal(symbol):
-    """生成选股信号"""
-    if not AKSHARE_AVAILABLE:
-        return get_mock_signal(symbol)
-    
-    try:
-        # 获取实时数据
-        quote = get_realtime_data(symbol)
-        
-        # 获取K线数据
-        klines = get_kline_data(symbol, limit=60)
-        
-        if len(klines) < 20:
-            return get_mock_signal(symbol)
-        
-        # 计算技术指标
-        closes = [k['收盘'] for k in klines]
-        
-        # MA5, MA20, MA60
-        ma5 = sum(closes[-5:]) / 5
-        ma20 = sum(closes[-20:]) / 20
-        ma60 = sum(closes[-60:]) / 60 if len(closes) >= 60 else ma20
-        
-        # RSI
-        rsi = quote['rsi']
-        
-        # 判断条件
-        signal = {
-            "symbol": symbol,
-            "name": quote['name'],
-            "price": quote['price'],
-            "rsi": rsi,
-            "ma5": round(ma5, 2),
-            "ma20": round(ma20, 2),
-            "ma60": round(ma60, 2),
-            "score": 0,
-            "reasons": [],
-            "suggestion": "HOLD"
-        }
-        
-        # 成交额 > 3亿
-        if quote['amount'] > 300000000:
-            signal['score'] += 20
-            signal['reasons'].append("成交额>3亿")
-        
-        # 价格 10-100元
-        if 10 <= quote['price'] <= 100:
-            signal['score'] += 15
-        
-        # RSI 35-65
-        if 35 <= rsi <= 65:
-            signal['score'] += 20
-            signal['reasons'].append(f"RSI={rsi:.0f}")
-        
-        # MA20 > MA60
-        if ma20 > ma60:
-            signal['score'] += 25
-            signal['reasons'].append("MA20>MA60")
-        
-        # 股价在 MA20 上方
-        if quote['price'] > ma20:
-            signal['score'] += 20
-            signal['reasons'].append("价格>MA20")
-        
-        # 生成建议
-        if signal['score'] >= 80:
-            signal['suggestion'] = "BUY"
-        elif rsi > 70:
-            signal['suggestion'] = "SELL"
-        elif rsi < 30:
-            signal['suggestion'] = "BUY"
-        
-        return signal
-        
-    except Exception as e:
-        print(f"生成信号失败: {e}", file=sys.stderr)
-        return get_mock_signal(symbol)
-
-
-def get_mock_signal(symbol):
-    """返回模拟选股信号"""
-    names = {
-        "600036": "招商银行", "600900": "长江电力", "601288": "农业银行",
-        "000858": "五粮液", "300750": "宁德时代", "601318": "中国平安",
-        "002475": "立讯精密", "600519": "贵州茅台",
-    }
-    
     return {
-        "symbol": symbol,
-        "name": names.get(symbol, symbol),
-        "price": 35.0,
-        "rsi": 45.0,
-        "ma5": 34.5,
-        "ma20": 34.0,
-        "ma60": 33.5,
-        "score": 85,
-        "reasons": ["RSI=45", "MA20>MA60", "价格>MA20"],
-        "suggestion": "BUY"
+        "klines":    klines,
+        "symbol":    symbol,
+        "period":    "daily",
+        "adjust":    "qfq",
+        "_source":   "mock",
+        "_fallback": "all_sources_failed",
     }
 
+
+def _mock_signal(symbol: str) -> dict:
+    return {
+        "symbol":     symbol,
+        "name":       symbol,
+        "price":      35.0,
+        "rsi":        45.0,
+        "ma5":        34.5,
+        "ma20":       34.0,
+        "ma60":       33.5,
+        "score":      85,
+        "reasons":    ["RSI=45", "MA20>MA60", "价格>MA20"],
+        "suggestion": "BUY",
+        "_source":    "mock",
+    }
+
+
+# ══════════════════════════════════════════════════════
+#  main
+# ══════════════════════════════════════════════════════
 
 def main():
-    parser = argparse.ArgumentParser(description='市场数据获取工具')
-    parser.add_argument('cmd', choices=['realtime', 'kline', 'rsi', 'signal'], 
-                        help='命令: realtime(实时行情), kline(K线), rsi(RSI), signal(选股信号)')
-    parser.add_argument('symbol', help='股票代码')
-    parser.add_argument('--period', default='daily', help='周期: daily, weekly, monthly')
-    parser.add_argument('--adjust', default='qfq', help='复权: qfq, hfqf, none')
-    parser.add_argument('--limit', type=int, default=60, help='数据条数')
-    parser.add_argument('--rsi-period', type=int, default=14, help='RSI周期')
-    
+    parser = argparse.ArgumentParser(
+        description="QuantOS 多源股票数据获取工具",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "cmd",
+        choices=["realtime", "kline", "rsi", "signal", "health", "cache_clear"],
+        help=(
+            "realtime   - 实时行情\n"
+            "kline      - K线数据\n"
+            "rsi        - RSI指标\n"
+            "signal     - 选股信号\n"
+            "health     - 数据源健康检查（新增）\n"
+            "cache_clear- 清除缓存（新增）"
+        ),
+    )
+    parser.add_argument("symbol", nargs="?", help="股票代码")
+    parser.add_argument("--period",  default="daily",  help="周期: daily, weekly, monthly")
+    parser.add_argument("--adjust",  default="qfq",    help="复权: qfq, hfqf, none")
+    parser.add_argument("--limit",   type=int, default=60, help="K线条数")
+    parser.add_argument("--rsi-period", type=int, default=14, help="RSI周期")
+    parser.add_argument(
+        "--skip-cache", action="store_true",
+        help="跳过缓存，强制从网络获取（新增）"
+    )
+
     args = parser.parse_args()
-    
-    if args.cmd == 'realtime':
-        result = get_realtime_data(args.symbol)
-    elif args.cmd == 'kline':
-        result = get_kline_data(args.symbol, args.period, args.adjust, args.limit)
-    elif args.cmd == 'rsi':
-        result = {"symbol": args.symbol, "rsi": calculate_rsi(args.symbol, args.rsi_period)}
-    elif args.cmd == 'signal':
-        result = generate_signal(args.symbol)
+
+    # 健康检查 / 缓存清除 单独处理
+    if args.cmd == "health":
+        print(json.dumps(cmd_health(), ensure_ascii=False))
+        return
+    if args.cmd == "cache_clear":
+        cmd_cache_clear()
+        return
+
+    if not args.symbol:
+        parser.print_help()
+        return
+
+    symbol = args.symbol.strip()
+
+    if args.cmd == "realtime":
+        result = cmd_realtime(symbol)
+    elif args.cmd == "kline":
+        result = cmd_kline(symbol, args.period, args.adjust, args.limit)
+    elif args.cmd == "rsi":
+        result = cmd_rsi(symbol, args.rsi_period)
+    elif args.cmd == "signal":
+        result = cmd_signal(symbol)
     else:
         result = {}
-    
+
     print(json.dumps(result, ensure_ascii=False))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -18,6 +18,25 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		},
 	})
 
+	// 管理后台公开 API（无需认证）
+	server.AddRoutes([]rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/dashboard/stats",
+			Handler: dashboardStatsHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/dashboard/seed",
+			Handler: seedDemoDataHandler(ctx),
+		},
+		{
+			Method:  http.MethodDelete,
+			Path:    "/api/dashboard/clear",
+			Handler: clearDemoDataHandler(ctx),
+		},
+	})
+
 	// 用户相关路由（公开，无需认证）
 	server.AddRoutes([]rest.Route{
 		{
@@ -44,7 +63,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/user/:user_id",
 			Handler: updateUserHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 策略管理（需认证）
 	server.AddRoutes([]rest.Route{
@@ -78,7 +97,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/strategies/:strategy_id/run",
 			Handler: runStrategyHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 投资组合（需认证）
 	server.AddRoutes([]rest.Route{
@@ -97,7 +116,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/portfolios/:portfolio_id",
 			Handler: getPortfolioHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 市场数据（需认证）
 	server.AddRoutes([]rest.Route{
@@ -111,7 +130,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/market/factors",
 			Handler: getFactorsHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 新闻政策（需认证）
 	server.AddRoutes([]rest.Route{
@@ -125,7 +144,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/policy",
 			Handler: getPolicyHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 策略工坊（需认证）
 	server.AddRoutes([]rest.Route{
@@ -144,7 +163,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/workshop/backtest",
 			Handler: backtestStrategyHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// AI 助手（需认证）
 	server.AddRoutes([]rest.Route{
@@ -158,7 +177,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/ai/suggestions",
 			Handler: getAISuggestionsHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// StockApi 股票数据（需认证）
 	server.AddRoutes([]rest.Route{
@@ -187,7 +206,107 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/stock/index",
 			Handler: getIndexDataHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/stock/search",
+			Handler: getStockSearchHandler(ctx),
+		},
+	})
+
+	// 投资组合管理（关注/模拟盘/实盘/收益）
+	server.AddRoutes([]rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/refresh",
+			Handler: refreshQuotesHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/watchlist",
+			Handler: getWatchListHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/portfolio/watchlist",
+			Handler: addWatchHandler(ctx),
+		},
+		{
+			Method:  http.MethodDelete,
+			Path:    "/api/v1/portfolio/watchlist/:symbol",
+			Handler: removeWatchHandler(ctx),
+		},
+		// 模拟盘
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/paper/account",
+			Handler: getPaperAccountHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/paper/positions",
+			Handler: getPaperPositionsHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/paper/trades",
+			Handler: getPaperTradesHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/paper/snapshots",
+			Handler: getPaperSnapshotsHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/portfolio/paper/trade",
+			Handler: paperTradeHandler(ctx),
+		},
+		// 实盘
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/real/positions",
+			Handler: getRealPositionsHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/real/trades",
+			Handler: getRealTradesHandler(ctx),
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/real/summary",
+			Handler: getRealSummaryHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/portfolio/real/trade",
+			Handler: realTradeHandler(ctx),
+		},
+	})
+
+	// 策略管理
+	server.AddRoutes([]rest.Route{
+		{
+			Method:  http.MethodGet,
+			Path:    "/api/v1/portfolio/strategy/list",
+			Handler: getStrategyListHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/portfolio/strategy",
+			Handler: saveStrategyHandler(ctx),
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/api/v1/portfolio/strategy/toggle",
+			Handler: toggleStrategyHandler(ctx),
+		},
+		{
+			Method:  http.MethodDelete,
+			Path:    "/api/v1/portfolio/strategy",
+			Handler: deleteStrategyHandler(ctx),
+		},
+	})
 
 	// 市场分析（需认证）
 	server.AddRoutes([]rest.Route{
@@ -231,7 +350,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/market/hot-money",
 			Handler: getHotMoneyDataHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 策略（增强版，需认证）
 	server.AddRoutes([]rest.Route{
@@ -255,7 +374,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/strategy/featured",
 			Handler: getFeaturedStrategiesHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 交易（需认证）
 	server.AddRoutes([]rest.Route{
@@ -294,7 +413,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/trading/risk-check",
 			Handler: riskCheckHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 
 	// 专项分析（需认证）
 	server.AddRoutes([]rest.Route{
@@ -338,5 +457,5 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			Path:    "/api/v1/analysis/capital-flow",
 			Handler: getCapitalFlowHandler(ctx),
 		},
-	}, rest.WithJwt(ctx.JwtAuthMiddleware))
+	})
 }

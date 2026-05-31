@@ -1,96 +1,56 @@
-# QuantSaaS API Configuration
-# This configuration uses environment variables for security
-# Copy env.example to .env and update with your actual values
+# QuantOS API Configuration
+Name: quantos-api
+Host: 0.0.0.0
+Port: 8888
+Mode: dev
 
-Name: ${APP_NAME:api}
-Host: ${APP_HOST:0.0.0.0}
-Port: ${APP_PORT:8888}
-Mode: ${APP_ENV:dev}
-
-# JWT 配置 - 使用环境变量保护密钥
+# JWT 配置
 JwtAuth:
-  AccessSecret: ${JWT_ACCESS_SECRET:change_this_secret_in_production}
-  AccessExpire: ${JWT_ACCESS_EXPIRE:86400}
+  AccessSecret: quantos_dev_secret_2024
+  AccessExpire: 86400
 
-# 数据库配置 - 使用环境变量保护敏感信息
+# 数据库配置
 DB:
-  Host: ${DB_HOST:localhost}
-  Port: ${DB_PORT:3306}
-  User: ${DB_USER:quantos}
-  Password: ${DB_PASSWORD:secure_password_required}
-  Database: ${DB_DATABASE:quantos}
-  Charset: ${DB_CHARSET:utf8mb4}
-  MaxIdleConns: ${DB_MAX_IDLE_CONNS:10}
-  MaxOpenConns: ${DB_MAX_OPEN_CONNS:100}
-  ConnMaxLifetime: ${DB_CONN_MAX_LIFETIME:300}
+  Host: localhost
+  Port: 3306
+  User: quantos
+  Password: tangpanpan314
+  Database: quantos
+  Charset: utf8mb4
+  MaxIdleConns: 10
+  MaxOpenConns: 100
+  ConnMaxLifetime: 300
 
-# Redis 配置 - 支持密码保护
+# Redis配置
 Redis:
-  Host: ${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  Host: 127.0.0.1
+  Port: 6379
   Type: node
-  Key: ${REDIS_KEY_PREFIX:quantos}
-  Pass: ${REDIS_PASSWORD:}
 
-# RPC服务配置
+# RPC服务配置（空数组，不启用）
 NewsPolicyEngine:
-  Endpoints:
-    - ${NEWS_POLICY_ENGINE_ENDPOINT:localhost:8081}
+  Endpoints: []
 
 StrategyWorkshop:
-  Endpoints:
-    - ${STRATEGY_WORKSHOP_ENDPOINT:localhost:8082}
+  Endpoints: []
 
 AiAssistant:
-  Endpoints:
-    - ${AI_ASSISTANT_ENDPOINT:localhost:8083}
+  Endpoints: []
 
 SmartExecution:
-  Endpoints:
-    - ${SMART_EXECUTION_ENDPOINT:localhost:8084}
+  Endpoints: []
 
-# 新增的stockApi服务配置
 StockData:
-  Endpoints:
-    - ${STOCK_DATA_ENDPOINT:localhost:8085}
+  Endpoints: []
 
 MarketAnalysis:
-  Endpoints:
-    - ${MARKET_ANALYSIS_ENDPOINT:localhost:8086}
+  Endpoints: []
 
 Strategy:
-  Endpoints:
-    - ${STRATEGY_ENDPOINT:localhost:8087}
+  Endpoints: []
 
 Trading:
-  Endpoints:
-    - ${TRADING_ENDPOINT:localhost:8088}
+  Endpoints: []
 
 SpecialAnalysis:
-  Endpoints:
-    - ${SPECIAL_ANALYSIS_ENDPOINT:localhost:8089}
-
-# 日志配置
-Log:
-  ServiceName: ${APP_NAME:api}
-  Level: ${LOG_LEVEL:info}
-  Mode: ${LOG_FORMAT:console}
-
-# 链路追踪配置 - 支持条件启用
-Telemetry:
-  Name: ${APP_NAME:api}
-  Endpoint: ${JAEGER_ENDPOINT:http://localhost:14268/api/traces}
-  Sampler: ${TRACING_SAMPLER:1.0}
-
-# 安全配置
-Security:
-  CorsAllowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
-  RateLimitPerMinute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:100}
-
-# 功能开关
-Features:
-  EnableSwagger: ${ENABLE_SWAGGER:true}
-  EnableMetrics: ${ENABLE_METRICS:true}
-  EnableTracing: ${ENABLE_TRACING:true}
-  EnableCache: ${ENABLE_CACHE:true}
-  DebugMode: ${DEBUG_MODE:true}
-  AutoMigrate: ${AUTO_MIGRATE:true}
+  Endpoints: []

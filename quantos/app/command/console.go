@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"quantos/app/command/internal"
 )
 
 var rootCmd = &cobra.Command{
@@ -21,6 +22,6 @@ func main() {
 }
 
 func init() {
-	// 添加子命令
 	rootCmd.AddCommand(paperCmd)
+	rootCmd.AddCommand(internal.MigrateCmd)
 }

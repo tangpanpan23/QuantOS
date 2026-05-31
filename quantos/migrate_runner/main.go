@@ -1,8 +1,8 @@
-package internal
+package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var MigrateCmd = &cobra.Command{
+var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "数据库迁移管理",
 	Long:  "管理数据库结构迁移",
@@ -56,10 +56,13 @@ var migrateStatusCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	MigrateCmd.AddCommand(migrateUpCmd)
-	MigrateCmd.AddCommand(migrateDownCmd)
-	MigrateCmd.AddCommand(migrateStatusCmd)
+func main() {
+	migrateCmd.AddCommand(migrateUpCmd, migrateDownCmd, migrateStatusCmd)
+	migrateCmd.SetArgs(os.Args[1:])
+	if err := migrateCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 func runMigrations(direction string) error {
@@ -67,24 +70,19 @@ func runMigrations(direction string) error {
 	if err != nil {
 		return fmt.Errorf("连接数据库失败: %v", err)
 	}
-
-	// 创建migrations表（如果不存在）
 	if err := createMigrationsTable(db); err != nil {
 		return fmt.Errorf("创建迁移表失败: %v", err)
 	}
-
 	files, err := getMigrationFiles(direction)
 	if err != nil {
 		return err
 	}
-
 	for _, file := range files {
 		if err := executeMigration(db, file, direction); err != nil {
 			return fmt.Errorf("执行迁移失败 %s: %v", file, err)
 		}
-		fmt.Printf("✓ 执行迁移: %s\n", file)
+		fmt.Printf("✓ 执行迁移: %s\n", filepath.Base(file))
 	}
-
 	return nil
 }
 
@@ -93,36 +91,28 @@ func showMigrationStatus() error {
 	if err != nil {
 		return fmt.Errorf("连接数据库失败: %v", err)
 	}
-
-	// 获取所有迁移文件
 	upFiles, err := getMigrationFiles("up")
 	if err != nil {
 		return err
 	}
-
 	fmt.Println("迁移状态:")
 	fmt.Println("==========")
-
 	for _, upFile := range upFiles {
 		version := extractVersion(upFile)
 		executed, err := isMigrationExecuted(db, version)
 		if err != nil {
 			return err
 		}
-
 		status := "待执行"
 		if executed {
 			status = "已执行"
 		}
 		fmt.Printf("%s: %s\n", version, status)
 	}
-
 	return nil
 }
 
 func connectDB() (*gorm.DB, error) {
-	// 这里应该从配置文件读取数据库连接信息
-	// 暂时使用硬编码的配置
 	dsn := "root:quantos2024@tcp(127.0.0.1:3306)/quantos?charset=utf8mb4&parseTime=True&loc=Local"
 	return gorm.Open(mysql.Open(dsn), &gorm.Config{})
 }
@@ -146,25 +136,21 @@ func getMigrationFiles(direction string) ([]string, error) {
 }
 
 func executeMigration(db *gorm.DB, file, direction string) error {
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-
 	version := extractVersion(file)
-
-	// 检查是否已经执行过
 	if direction == "up" {
 		executed, err := isMigrationExecuted(db, version)
 		if err != nil {
 			return err
 		}
 		if executed {
-			return nil // 已经执行过，跳过
+			return nil
 		}
 	}
 
-	// 在事务中执行迁移
 	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -172,12 +158,30 @@ func executeMigration(db *gorm.DB, file, direction string) error {
 		}
 	}()
 
-	if err := tx.Exec(string(content)).Error; err != nil {
-		tx.Rollback()
-		return err
+	// 分割多条 SQL 语句逐条执行
+	lines := strings.Split(string(content), ";")
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "--") {
+			continue
+		}
+		// 移除行内注释
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			line = strings.TrimSpace(line[:idx])
+		}
+		if line == "" {
+			continue
+		}
+		if err := tx.Exec(line).Error; err != nil {
+			tx.Rollback()
+			preview := line
+			if len(preview) > 80 {
+				preview = preview[:80] + "..."
+			}
+			return fmt.Errorf("SQL 错误 [%s]: %v", preview, err)
+		}
 	}
 
-	// 记录迁移执行情况
 	if direction == "up" {
 		if err := tx.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version).Error; err != nil {
 			tx.Rollback()
@@ -189,12 +193,10 @@ func executeMigration(db *gorm.DB, file, direction string) error {
 			return err
 		}
 	}
-
 	return tx.Commit().Error
 }
 
 func extractVersion(filename string) string {
-	// 从文件名中提取版本号，例如 "000001_create_initial_tables.up.sql" -> "000001"
 	base := filepath.Base(filename)
 	return strings.Split(base, "_")[0]
 }

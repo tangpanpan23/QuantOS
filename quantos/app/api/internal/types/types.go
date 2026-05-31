@@ -321,3 +321,83 @@ type (
 func (e *ErrorResponse) Error() string {
 	return e.Message
 }
+
+// ========== Stock Data Types ==========
+
+// StockListItem 股票列表项
+type StockListItem struct {
+	ID         uint64  `json:"id"`
+	Symbol     string  `json:"symbol"`
+	Name       string  `json:"name"`
+	Market     string  `json:"market"`
+	Industry   string  `json:"industry"`
+	Sector     string  `json:"sector"`
+	ListDate   string  `json:"list_date"`
+	Status     int     `json:"status"`
+	TotalShare float64 `json:"total_share"`
+}
+
+// RealTimeQuoteItem 实时行情项
+type RealTimeQuoteItem struct {
+	Symbol     string  `json:"symbol"`
+	SymbolName string  `json:"symbol_name"`
+	OpenPrice  float64 `json:"open_price"`
+	HighPrice  float64 `json:"high_price"`
+	LowPrice   float64 `json:"low_price"`
+	ClosePrice float64 `json:"close_price"`
+	Volume     int64   `json:"volume"`
+	Amount     float64 `json:"amount"`
+	ChangePct  float64 `json:"change_pct"`
+	TradeDate  string  `json:"trade_date"`
+}
+
+// KLineItem K线数据项
+type KLineItem struct {
+	Symbol     string  `json:"symbol"`
+	TradeDate  string  `json:"trade_date"`
+	OpenPrice  float64 `json:"open_price"`
+	HighPrice  float64 `json:"high_price"`
+	LowPrice   float64 `json:"low_price"`
+	ClosePrice float64 `json:"close_price"`
+	Volume     int64   `json:"volume"`
+	Amount     float64 `json:"amount"`
+	ChangePct  float64 `json:"change_pct,omitempty"`
+	MA5        float64 `json:"ma5"`
+	MA10       float64 `json:"ma10"`
+	MA20       float64 `json:"ma20"`
+	MA60       float64 `json:"ma60"`
+	RSI6       float64 `json:"rsi6"`
+	RSI12      float64 `json:"rsi12"`
+	RSI24      float64 `json:"rsi24"`
+	MACDDif    float64 `json:"macd_dif"`
+	MACDDea    float64 `json:"macd_dea"`
+	MACDHist   float64 `json:"macd_hist"`
+}
+
+// IndexDataItem 指数数据项
+type IndexDataItem struct {
+	Symbol     string  `json:"symbol"`
+	Name       string  `json:"name"`
+	ClosePrice float64 `json:"close_price"`
+	ChangePct  float64 `json:"change_pct"`
+	Volume     int64   `json:"volume"`
+	Amount     float64 `json:"amount"`
+	TradeDate  string  `json:"trade_date"`
+}
+
+// StockSearchItem 股票搜索项
+type StockSearchItem struct {
+	Symbol string `json:"symbol"`
+	Name   string `json:"name"`
+	Market string `json:"market"`
+}
+
+// StockErrorResponse 股票API专用错误响应
+type StockErrorResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+func (e *StockErrorResponse) Error() string {
+	return e.Message
+}

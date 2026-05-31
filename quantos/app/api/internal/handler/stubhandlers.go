@@ -59,11 +59,7 @@ func updateStrategyHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
-func deleteStrategyHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		httpx.OkJson(w, map[string]interface{}{"code": 0, "message": "策略删除功能开发中"})
-	}
-}
+// deleteStrategyHandler 已在 portfoliohandlers.go 实现
 
 func runStrategyHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -214,64 +210,9 @@ func getAISuggestionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
-// ========== Stock Data Handlers (StockApi) ==========
-
-func getStockListHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		httpx.OkJson(w, map[string]interface{}{
-			"code":    0,
-			"message": "股票列表功能开发中",
-			"data":    map[string]interface{}{"list": []interface{}{}},
-		})
-	}
-}
-
-func getRealTimeQuoteHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		symbols := r.URL.Query().Get("symbols")
-		httpx.OkJson(w, map[string]interface{}{
-			"code":    0,
-			"message": "实时行情功能开发中",
-			"data": map[string]interface{}{
-				"symbols": symbols,
-				"data":    map[string]interface{}{},
-			},
-		})
-	}
-}
-
-func getKLineDataHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		symbol := r.URL.Query().Get("symbol")
-		httpx.OkJson(w, map[string]interface{}{
-			"code":    0,
-			"message": "K线数据功能开发中",
-			"data": map[string]interface{}{
-				"symbol": symbol,
-				"klines": []interface{}{},
-			},
-		})
-	}
-}
-
-func getLevel2DataHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		httpx.Error(w, &types.ErrorResponse{
-			Code:    4001,
-			Message: "Level2 数据需要专业版权限",
-		})
-	}
-}
-
-func getIndexDataHandler(ctx *svc.ServiceContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		httpx.OkJson(w, map[string]interface{}{
-			"code":    0,
-			"message": "指数数据功能开发中",
-			"data":    map[string]interface{}{"indices": []interface{}{}},
-		})
-	}
-}
+// ========== Stock Data Handlers (已移至 stockhandlers.go) ==========
+// getStockListHandler, getRealTimeQuoteHandler, getKLineDataHandler, getIndexDataHandler, getLevel2DataHandler
+// 已从 stockhandlers.go 提供真实实现
 
 // ========== Market Analysis Handlers ==========
 
@@ -482,7 +423,7 @@ func riskCheckHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 			"code":    0,
 			"message": "风控检查功能开发中",
 			"data": map[string]interface{}{
-				"passed": true,
+				"passed":  true,
 				"reasons": []string{},
 			},
 		})
