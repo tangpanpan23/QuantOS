@@ -281,35 +281,49 @@ func getPaperPositionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 		db := ctx.Common.DB
 		var result []map[string]interface{}
 
-		rows, err := db.WithContext(r.Context()).Raw(`
-			SELECT p.id, p.symbol, b.name, b.industry, b.market,
+		// 先查今日行情
+		todayQuotes := make(map[string]struct{ Price, ChangePct float64 })
+		db.Raw(`SELECT symbol, close_price, change_pct FROM q_market_data WHERE trade_date = CURDATE()`).Scan(&todayQuotes)
+		// 再查最近交易日行情（备用）
+		var lastQuotes []struct {
+			Symbol     string
+			Price      float64
+			ChangePct  float64
+		}
+		db.Raw(`SELECT m.symbol, m.close_price as price, m.change_pct FROM q_paper_position p JOIN q_market_data m ON p.symbol = m.symbol AND m.trade_date = (SELECT MAX(trade_date) FROM q_market_data WHERE symbol = p.symbol AND trade_date < CURDATE()) WHERE p.account_id = 1`).Scan(&lastQuotes)
+		lastMap := make(map[string]struct{ Price, ChangePct float64 })
+		for _, lq := range lastQuotes {
+			lastMap[lq.Symbol] = struct{ Price, ChangePct float64 }{lq.Price, lq.ChangePct}
+		}
+
+		rows, err := db.Raw(`
+			SELECT p.id, p.symbol, COALESCE(b.name,'') as name, COALESCE(b.industry,'') as industry, COALESCE(b.market,'') as market,
 			       p.shares, p.avg_cost, p.shares * p.avg_cost as total_cost,
-			       COALESCE(m.close_price, mc.close_price, p.avg_cost) as current_price,
-			       COALESCE(m.change_pct, mc.change_pct, 0) as change_pct,
-			       COALESCE(m.high_price, 0) as high_price,
-			       COALESCE(m.low_price, 0) as low_price,
-			       COALESCE(m.volume, 0) as volume,
-			       (COALESCE(m.close_price, mc.close_price, p.avg_cost) - p.avg_cost) * p.shares as profit,
-			       CASE WHEN p.avg_cost > 0 AND COALESCE(m.close_price, mc.close_price, 0) > 0 THEN (COALESCE(m.close_price, mc.close_price, p.avg_cost) - p.avg_cost) / p.avg_cost * 100 ELSE 0 END as profit_rate,
-			       p.trade_date as opened_at
+			       p.entry_date as opened_at
 			FROM q_paper_position p
 			LEFT JOIN q_stock_basic b ON p.symbol = b.symbol
-			LEFT JOIN q_market_data m ON p.symbol = m.symbol AND m.trade_date = CURDATE()
-			LEFT JOIN q_market_data mc ON p.symbol = mc.symbol AND mc.trade_date = (
-				SELECT MAX(trade_date) FROM q_market_data WHERE symbol = p.symbol AND trade_date < CURDATE()
-			)
 			WHERE p.account_id = 1
-			ORDER BY profit_rate DESC
+			ORDER BY p.id DESC
 		`).Rows()
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
 				var id int64
 				var symbol, name, industry, market, openedAt string
-				var shares, avgCost, totalCost, currentPrice, changePct float64
-				var highPrice, lowPrice, volume, profit, profitRate float64
-				rows.Scan(&id, &symbol, &name, &industry, &market, &shares, &avgCost, &totalCost,
-					&currentPrice, &changePct, &highPrice, &lowPrice, &volume, &profit, &profitRate, &openedAt)
+				var shares, avgCost, totalCost float64
+				rows.Scan(&id, &symbol, &name, &industry, &market, &shares, &avgCost, &totalCost, &openedAt)
+				// 注入实时行情：优先今日，否则最近交易日
+				curPrice, changePct := avgCost, 0.0
+				if q, ok := todayQuotes[symbol]; ok {
+					curPrice, changePct = q.Price, q.ChangePct
+				} else if q, ok := lastMap[symbol]; ok {
+					curPrice, changePct = q.Price, q.ChangePct
+				}
+				profit := (curPrice - avgCost) * shares
+				profitRate := 0.0
+				if avgCost > 0 && curPrice > 0 {
+					profitRate = (curPrice - avgCost) / avgCost * 100
+				}
 				result = append(result, map[string]interface{}{
 					"id":            id,
 					"symbol":        symbol,
@@ -319,11 +333,11 @@ func getPaperPositionsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 					"shares":        shares,
 					"avg_cost":      avgCost,
 					"total_cost":    totalCost,
-					"current_price": currentPrice,
+					"current_price": curPrice,
 					"change_pct":    changePct,
-					"high_price":    highPrice,
-					"low_price":     lowPrice,
-					"volume":       volume,
+					"high_price":    curPrice,
+					"low_price":     curPrice,
+					"volume":        0.0,
 					"profit":        profit,
 					"profit_rate":   profitRate,
 					"opened_at":     openedAt,
@@ -803,10 +817,6 @@ func getRealSummaryHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 		db := ctx.Common.DB
 
 		// 账户总览
-		var totalInvested, totalValue, totalProfit, totalProfitRate float64
-		var posCount int64
-
-		// 持仓汇总（先用已知持仓数据计算）
 		var totalInvested, totalValue, totalProfit, totalProfitRate, posCount float64
 		db.WithContext(r.Context()).Raw("SELECT COUNT(*) FROM q_positions WHERE portfolio_id=1 AND quantity>0").Scan(&posCount)
 		posRows, _ := db.WithContext(r.Context()).Raw(`

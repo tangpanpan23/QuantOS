@@ -29,16 +29,23 @@ func main() {
 
 	handler.RegisterHandlers(server, ctx)
 
-	// 静态文件服务
-	dir, _ := os.Getwd()
-	staticDir := filepath.Join(dir, "dashboard")
+	// 静态文件服务（SPA）
+	staticDir := "/Users/tank/Code/quantos-dashboard/dist"
 	if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
-		staticHandler := http.StripPrefix("/", http.FileServer(http.Dir(staticDir)))
-		server.AddRoutes([]rest.Route{{
-			Method:  http.MethodGet,
-			Path:    "/",
-			Handler: staticHandler.ServeHTTP,
-		}})
+		fs := http.Dir(staticDir)
+		fileServer := http.FileServer(fs)
+		spaHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fp := filepath.Join(staticDir, r.URL.Path)
+			if _, err := os.Stat(fp); os.IsNotExist(err) {
+				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+			} else {
+				fileServer.ServeHTTP(w, r)
+			}
+		})
+		rest.WithNotFoundHandler(spaHandler)(server)
+		fmt.Printf("Static files enabled (SPA): %s\n", staticDir)
+	} else {
+		fmt.Printf("WARNING: dist not found at %s\n", staticDir)
 	}
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
