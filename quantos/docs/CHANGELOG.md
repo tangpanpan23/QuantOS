@@ -8,10 +8,39 @@
 
 ### 新增
 
+- **前端 Dashboard** (`/Users/tank/Code/quantos-dashboard/`) - Vue3 + Vite 管理后台完整源码
+  - 6个页面: MarketView(大盘+搜索)/StockListView(筛选列表)/KlineView(K线图)/PortfolioView(实盘持仓)/PaperView(模拟交易)/StrategyView(策略管理)
+  - 暗色主题，涨跌颜色区分，MA均线计算
+  - API层: `stockApi` + `portfolioApi`，axios封装
+- **`quantos-dashboard/` GitHub仓库** - 前端独立仓库 `tangpanpan23/quantos-dashboard`
+- **`app/api/api.go`** - SPA静态文件服务
+  - `rest.WithNotFoundHandler` 捕获所有未匹配路由
+  - 静态文件路径: `/Users/tank/Code/quantos-dashboard/dist`
+  - 支持 Vue Router History 模式（Fallback到index.html）
+
+### 修复
+
+- **`portfoliohandlers.go`** - `getPaperPositionsHandler` 字段映射修复
+  - SQL字段: `p.trade_date` → `p.entry_date`
+  - 行情注入: 今日优先，最近交易日fallback
+- **`portfoliohandlers.go`** - `getRealSummaryHandler` 重复变量声明冲突
+  - 删除重复的 `totalInvested/totalProfit/totalProfitRate/posCount` 声明
+- **`api.go`** - 静态文件路径错误修复
+  - 原: `app/api/../../quantos-dashboard/dist` (多一级quantos目录)
+  - 改: `/Users/tank/Code/quantos-dashboard/dist` (绝对路径)
+
+### 优化
+
+- **MySQL连接** - TCP 3306 直连，密码 `tangpanpan314`
+- **API 9个端点全部200 OK**: stock/index, stock/list, portfolio/real/positions, portfolio/paper/positions, portfolio/paper/trades, portfolio/real/summary, portfolio/strategy/list, /assets/, /
+- **模拟持仓数据** - 2条有效记录（000001平安银行/600036招商银行），行情价格正常注入
+
+### 新增
+
 - **`stubhandlers.go`** - 所有未实现路由的完整 Stub Handler 实现（49个），项目现在可以完整编译和运行
 - **`docs/API.md`** - 完整的 REST API 接口文档（含所有 60+ 端点的请求/响应示例、错误码说明）
 - **`docs/DEVELOPER.md`** - 开发者指南（含添加 Handler 完整教程、项目结构说明、数据库模型）
-- **`docs/SETUP.md`** - 三种快速上手方式（Docker / 本地开发 / 模拟盘独立），含常见问题解答
+- **`docs/SETUP.md`** - 三种快速上手方式（Docker / 本地开发 / 模拟盘独立），含常见问题解答）
 - **`docs/CHANGELOG.md`** - 项目变更日志
 - **`.env.example`** - 完整的环境变量配置模板（含所有配置项说明）
 - **`CONTRIBUTING.md`** - 贡献指南（代码规范、PR 流程、测试要求）
